@@ -5,1444 +5,1377 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>PhantomBridge — Control Center</title>
   <style>
-    /* ─── Reset & Base ─────────────────────────────────────── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
     :root {
-      --bg:          #0a0c10;
-      --bg2:         #0e1116;
-      --card:        #111318;
-      --card2:       #161920;
-      --border:      rgba(255,255,255,.06);
-      --border2:     rgba(255,255,255,.10);
-      --purple:      #6c63ff;
-      --purple-dim:  rgba(108,99,255,.15);
-      --purple-glow: rgba(108,99,255,.35);
-      --cyan:        #00d4ff;
-      --cyan-dim:    rgba(0,212,255,.12);
-      --cyan-glow:   rgba(0,212,255,.30);
-      --green:       #00e676;
-      --yellow:      #ffd740;
-      --red:         #ff5252;
-      --text:        #e2e8f0;
-      --text-muted:  #64748b;
-      --text-dim:    #94a3b8;
-      --radius:      14px;
-      --radius-sm:   8px;
-      --shadow:      0 4px 24px rgba(0,0,0,.45);
-      --shadow-glow: 0 0 40px rgba(108,99,255,.15);
+      --bg: #0a0c10; --bg2: #0e1116; --card: #111318; --card2: #161920;
+      --border: rgba(255,255,255,.06); --border2: rgba(255,255,255,.10);
+      --purple: #6c63ff; --purple-dim: rgba(108,99,255,.15); --purple-glow: rgba(108,99,255,.35);
+      --cyan: #00d4ff; --cyan-dim: rgba(0,212,255,.12); --cyan-glow: rgba(0,212,255,.30);
+      --green: #00e676; --yellow: #ffd740; --red: #ff5252; --orange: #ff9100;
+      --text: #e2e8f0; --text-muted: #64748b; --text-dim: #94a3b8;
+      --radius: 14px; --radius-sm: 8px;
+      --shadow: 0 4px 24px rgba(0,0,0,.45); --shadow-glow: 0 0 40px rgba(108,99,255,.15);
+      --sidebar-w: 240px; --sidebar-collapsed: 64px; --header-h: 56px;
     }
-
     html { font-size: 15px; scroll-behavior: smooth; }
-
-    body {
-      font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-      overflow-x: hidden;
-    }
-
-    /* ─── Scrollbar ─────────────────────────────────────────── */
+    body { font-family: 'Inter','Segoe UI',system-ui,sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; overflow-x: hidden; }
     ::-webkit-scrollbar { width: 5px; height: 5px; }
     ::-webkit-scrollbar-track { background: var(--bg2); }
     ::-webkit-scrollbar-thumb { background: #2a2d38; border-radius: 99px; }
     ::-webkit-scrollbar-thumb:hover { background: var(--purple); }
 
-    /* ─── Keyframes ─────────────────────────────────────────── */
-    @keyframes gradientShift {
-      0%   { background-position: 0% 50%; }
-      50%  { background-position: 100% 50%; }
-      100% { background-position: 0% 50%; }
-    }
-    @keyframes blink {
-      0%, 100% { opacity: 1; }
-      50%       { opacity: .3; }
-    }
-    @keyframes pulse-ring {
-      0%   { transform: scale(.8); opacity: 1; }
-      100% { transform: scale(2.2); opacity: 0; }
-    }
-    @keyframes flow-dot {
-      0%   { left: -6px; opacity: 0; }
-      10%  { opacity: 1; }
-      90%  { opacity: 1; }
-      100% { left: calc(100% + 6px); opacity: 0; }
-    }
-    @keyframes shimmer {
-      0%   { background-position: -600px 0; }
-      100% { background-position: 600px 0; }
-    }
-    @keyframes fadeInUp {
-      from { opacity: 0; transform: translateY(18px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
-    @keyframes countUp {
-      from { opacity: 0; transform: scale(.7); }
-      to   { opacity: 1; transform: scale(1); }
-    }
-    @keyframes spin {
-      from { transform: rotate(0deg); }
-      to   { transform: rotate(360deg); }
-    }
-    @keyframes statusPulse {
-      0%, 100% { box-shadow: 0 0 0 0 rgba(0,230,118,.5); }
-      50%       { box-shadow: 0 0 0 6px rgba(0,230,118,0); }
-    }
+    @keyframes gradientShift { 0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%} }
+    @keyframes blink { 0%,100%{opacity:1}50%{opacity:.3} }
+    @keyframes pulse-ring { 0%{transform:scale(.8);opacity:1}100%{transform:scale(2.2);opacity:0} }
+    @keyframes flow-dot { 0%{left:-6px;opacity:0}10%{opacity:1}90%{opacity:1}100%{left:calc(100% + 6px);opacity:0} }
+    @keyframes shimmer { 0%{background-position:-600px 0}100%{background-position:600px 0} }
+    @keyframes fadeInUp { from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)} }
+    @keyframes countUp { from{opacity:0;transform:scale(.7)}to{opacity:1;transform:scale(1)} }
+    @keyframes spin { from{transform:rotate(0deg)}to{transform:rotate(360deg)} }
+    @keyframes statusPulse { 0%,100%{box-shadow:0 0 0 0 rgba(0,230,118,.5)}50%{box-shadow:0 0 0 6px rgba(0,230,118,0)} }
+    @keyframes termCursor { 0%,100%{opacity:1}50%{opacity:0} }
+    @keyframes slideIn { from{transform:translateX(-20px);opacity:0}to{transform:translateX(0);opacity:1} }
+    @keyframes toastIn { from{transform:translateX(-50%) translateY(80px)}to{transform:translateX(-50%) translateY(0)} }
 
-    /* ─── Header ─────────────────────────────────────────────── */
-    header {
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      background: linear-gradient(135deg, #0a0c10 0%, #111420 50%, #0a0c10 100%);
-      border-bottom: 1px solid var(--border2);
-      backdrop-filter: blur(20px);
-      padding: 0 28px;
-      height: 64px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-    }
-
-    .logo {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      text-decoration: none;
-    }
-    .logo-icon {
-      width: 36px; height: 36px;
-      border-radius: 10px;
-      background: linear-gradient(135deg, var(--purple), var(--cyan));
+    /* ─── LOGIN OVERLAY ─── */
+    #login-overlay {
+      position: fixed; inset: 0; z-index: 9999; background: var(--bg);
       display: flex; align-items: center; justify-content: center;
-      font-size: 18px;
-      box-shadow: 0 0 20px var(--purple-glow);
-      flex-shrink: 0;
+      transition: opacity .4s, visibility .4s;
     }
-    .logo-text {
-      font-size: 1.2rem;
-      font-weight: 700;
-      letter-spacing: -.5px;
-      background: linear-gradient(90deg, #fff 30%, var(--cyan) 70%, var(--purple) 100%);
-      background-size: 200% auto;
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-      animation: gradientShift 5s ease infinite;
+    #login-overlay.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+    .login-box {
+      background: var(--card); border: 1px solid var(--border2); border-radius: var(--radius);
+      padding: 48px 40px; width: 380px; max-width: 90vw; text-align: center;
+      box-shadow: 0 0 80px rgba(108,99,255,.15);
     }
-    .logo-sub {
-      font-size: .68rem;
-      color: var(--text-muted);
-      font-weight: 400;
-      letter-spacing: .5px;
-      text-transform: uppercase;
-      -webkit-text-fill-color: var(--text-muted);
+    .login-logo { font-size: 48px; margin-bottom: 16px; }
+    .login-title { font-size: 1.5rem; font-weight: 700; margin-bottom: 6px;
+      background: linear-gradient(90deg,#fff,var(--cyan),var(--purple));
+      background-size: 200% auto; -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text; animation: gradientShift 5s ease infinite;
     }
+    .login-sub { font-size: .82rem; color: var(--text-muted); margin-bottom: 28px; }
+    .login-input {
+      width: 100%; padding: 12px 16px; background: var(--bg2); border: 1px solid var(--border2);
+      border-radius: var(--radius-sm); color: var(--text); font-size: .9rem; outline: none;
+      transition: border-color .2s;
+    }
+    .login-input:focus { border-color: var(--purple); }
+    .login-input::placeholder { color: var(--text-muted); }
+    .login-btn {
+      width: 100%; margin-top: 16px; padding: 12px; background: linear-gradient(135deg,var(--purple),var(--cyan));
+      border: none; border-radius: var(--radius-sm); color: #fff; font-size: .9rem; font-weight: 700;
+      cursor: pointer; transition: opacity .2s, transform .1s;
+    }
+    .login-btn:hover { opacity: .9; }
+    .login-btn:active { transform: scale(.98); }
+    .login-error { color: var(--red); font-size: .78rem; margin-top: 12px; min-height: 20px; }
 
-    .header-right {
-      display: flex;
-      align-items: center;
-      gap: 20px;
-    }
+    /* ─── TOP BAR ─── */
+    .top-bar { height: 3px; background: linear-gradient(90deg,var(--purple),var(--cyan),var(--purple));
+      background-size: 200% auto; animation: gradientShift 3s linear infinite; position: fixed; top: 0; left: 0; right: 0; z-index: 200; }
 
-    .live-clock {
-      font-size: .82rem;
-      color: var(--text-dim);
-      font-variant-numeric: tabular-nums;
-      letter-spacing: .5px;
+    /* ─── HEADER ─── */
+    header {
+      position: fixed; top: 3px; left: 0; right: 0; z-index: 150; height: var(--header-h);
+      background: linear-gradient(135deg,#0a0c10 0%,#111420 50%,#0a0c10 100%);
+      border-bottom: 1px solid var(--border2); backdrop-filter: blur(20px);
+      padding: 0 20px; display: flex; align-items: center; justify-content: space-between;
     }
+    .header-left { display: flex; align-items: center; gap: 12px; }
+    .sidebar-toggle {
+      width: 36px; height: 36px; border-radius: var(--radius-sm); border: 1px solid var(--border);
+      background: var(--card); color: var(--text-dim); font-size: 18px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; transition: all .2s;
+    }
+    .sidebar-toggle:hover { border-color: var(--purple); color: var(--purple); }
+    .logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+    .logo-icon { width: 32px; height: 32px; border-radius: 8px;
+      background: linear-gradient(135deg,var(--purple),var(--cyan));
+      display: flex; align-items: center; justify-content: center; font-size: 16px;
+      box-shadow: 0 0 16px var(--purple-glow); flex-shrink: 0; }
+    .logo-text { font-size: 1.1rem; font-weight: 700; letter-spacing: -.5px;
+      background: linear-gradient(90deg,#fff 30%,var(--cyan) 70%,var(--purple) 100%);
+      background-size: 200% auto; -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text; animation: gradientShift 5s ease infinite; }
+    .header-right { display: flex; align-items: center; gap: 16px; }
+    .live-clock { font-size: .78rem; color: var(--text-dim); font-variant-numeric: tabular-nums; letter-spacing: .5px; }
     .live-clock span { color: var(--text-muted); margin: 0 4px; }
-
-    .conn-badge {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 5px 14px;
-      border-radius: 99px;
-      background: rgba(0,230,118,.08);
-      border: 1px solid rgba(0,230,118,.2);
-      font-size: .78rem;
-      font-weight: 600;
-      color: var(--green);
-      letter-spacing: .3px;
-      transition: all .3s;
-    }
-    .conn-badge.offline {
-      background: rgba(255,82,82,.08);
-      border-color: rgba(255,82,82,.2);
-      color: var(--red);
-    }
-    .conn-dot {
-      width: 8px; height: 8px;
-      border-radius: 50%;
-      background: var(--green);
-      position: relative;
-      animation: blink 1.8s ease-in-out infinite;
-    }
-    .conn-dot::before {
-      content: '';
-      position: absolute;
-      inset: -3px;
-      border-radius: 50%;
-      background: var(--green);
-      animation: pulse-ring 1.8s ease-out infinite;
-    }
+    .conn-badge { display: flex; align-items: center; gap: 7px; padding: 4px 12px; border-radius: 99px;
+      background: rgba(0,230,118,.08); border: 1px solid rgba(0,230,118,.2);
+      font-size: .72rem; font-weight: 600; color: var(--green); transition: all .3s; }
+    .conn-badge.offline { background: rgba(255,82,82,.08); border-color: rgba(255,82,82,.2); color: var(--red); }
+    .conn-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); position: relative; animation: blink 1.8s ease-in-out infinite; }
+    .conn-dot::before { content:''; position: absolute; inset: -3px; border-radius: 50%; background: var(--green); animation: pulse-ring 1.8s ease-out infinite; }
     .conn-badge.offline .conn-dot { background: var(--red); animation: none; }
     .conn-badge.offline .conn-dot::before { display: none; }
+    .logout-btn { background: none; border: 1px solid var(--border); border-radius: var(--radius-sm);
+      color: var(--text-muted); padding: 4px 10px; font-size: .7rem; cursor: pointer; transition: all .2s; }
+    .logout-btn:hover { border-color: var(--red); color: var(--red); }
 
-    /* ─── Layout ─────────────────────────────────────────────── */
-    .page-wrapper {
-      max-width: 1440px;
-      margin: 0 auto;
-      padding: 28px 28px 60px;
+    /* ─── SIDEBAR ─── */
+    .sidebar {
+      position: fixed; top: calc(3px + var(--header-h)); left: 0; bottom: 0;
+      width: var(--sidebar-w); background: var(--card); border-right: 1px solid var(--border);
+      z-index: 140; transition: width .3s cubic-bezier(.4,0,.2,1), transform .3s;
+      display: flex; flex-direction: column; overflow: hidden;
     }
+    .sidebar.collapsed { width: var(--sidebar-collapsed); }
+    .sidebar-nav { flex: 1; padding: 12px 8px; display: flex; flex-direction: column; gap: 2px; overflow-y: auto; }
+    .nav-item {
+      display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: var(--radius-sm);
+      font-size: .82rem; font-weight: 500; color: var(--text-dim); cursor: pointer;
+      transition: all .2s; white-space: nowrap; text-decoration: none; border: none; background: none; width: 100%; text-align: left;
+    }
+    .nav-item:hover { background: rgba(255,255,255,.04); color: var(--text); }
+    .nav-item.active { background: var(--purple-dim); color: var(--purple); font-weight: 600; }
+    .nav-item .nav-icon { width: 20px; text-align: center; font-size: 16px; flex-shrink: 0; }
+    .nav-item .nav-label { overflow: hidden; transition: opacity .2s; }
+    .sidebar.collapsed .nav-label { opacity: 0; width: 0; }
+    .nav-divider { height: 1px; background: var(--border); margin: 8px 12px; }
+    .sidebar-footer { padding: 12px; border-top: 1px solid var(--border); font-size: .65rem; color: var(--text-muted); text-align: center; white-space: nowrap; overflow: hidden; }
+    .sidebar.collapsed .sidebar-footer { font-size: 0; }
 
-    .section-label {
-      font-size: .7rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 1.5px;
-      color: var(--text-muted);
-      margin-bottom: 14px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
+    /* ─── MAIN CONTENT ─── */
+    .main-content {
+      margin-left: var(--sidebar-w); margin-top: calc(3px + var(--header-h));
+      padding: 24px; min-height: calc(100vh - 3px - var(--header-h));
+      transition: margin-left .3s cubic-bezier(.4,0,.2,1);
     }
-    .section-label::after {
-      content: '';
-      flex: 1;
-      height: 1px;
-      background: var(--border);
-    }
+    .sidebar.collapsed ~ .main-content { margin-left: var(--sidebar-collapsed); }
 
-    /* ─── Stats Row ──────────────────────────────────────────── */
-    .stats-row {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 16px;
-      margin-bottom: 28px;
-      animation: fadeInUp .5s ease both;
-    }
+    /* ─── TAB PAGES ─── */
+    .tab-page { display: none; animation: fadeInUp .35s ease; }
+    .tab-page.active { display: block; }
 
-    .stat-card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 20px 22px;
-      position: relative;
-      overflow: hidden;
-      transition: transform .2s, box-shadow .2s, border-color .2s;
-      cursor: default;
-    }
-    .stat-card:hover {
-      transform: translateY(-3px);
-      box-shadow: var(--shadow-glow);
-      border-color: var(--border2);
-    }
-    .stat-card::before {
-      content: '';
-      position: absolute;
-      top: 0; left: 0; right: 0;
-      height: 2px;
-      background: linear-gradient(90deg, var(--purple), var(--cyan));
-      opacity: 0;
-      transition: opacity .3s;
-    }
-    .stat-card:hover::before { opacity: 1; }
+    /* ─── SHARED COMPONENTS ─── */
+    .section-label { font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px;
+      color: var(--text-muted); margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+    .section-label::after { content:''; flex: 1; height: 1px; background: var(--border); }
 
-    .stat-card .card-shine {
-      position: absolute;
-      inset: 0;
-      background: radial-gradient(circle at 0% 0%, rgba(108,99,255,.06) 0%, transparent 60%);
-      pointer-events: none;
-    }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+      transition: transform .2s, box-shadow .2s, border-color .2s; }
+    .card:hover { border-color: var(--border2); }
 
-    .stat-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 14px;
+    .btn {
+      padding: 8px 16px; border-radius: var(--radius-sm); font-size: .78rem; font-weight: 600;
+      cursor: pointer; border: 1px solid var(--border); background: var(--card2); color: var(--text);
+      transition: all .2s; display: inline-flex; align-items: center; gap: 6px;
     }
-    .stat-label {
-      font-size: .72rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: .8px;
-      color: var(--text-muted);
-    }
-    .stat-icon {
-      width: 36px; height: 36px;
-      border-radius: var(--radius-sm);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 16px;
-    }
-    .stat-icon.purple { background: var(--purple-dim); }
-    .stat-icon.cyan   { background: var(--cyan-dim); }
-    .stat-icon.green  { background: rgba(0,230,118,.12); }
-    .stat-icon.yellow { background: rgba(255,215,64,.12); }
+    .btn:hover { border-color: var(--purple); transform: translateY(-1px); }
+    .btn.primary { background: linear-gradient(135deg,var(--purple),#5a52e0); border-color: var(--purple); color: #fff; }
+    .btn.primary:hover { box-shadow: 0 0 20px var(--purple-glow); }
+    .btn.danger { border-color: rgba(255,82,82,.3); color: var(--red); }
+    .btn.danger:hover { background: rgba(255,82,82,.1); border-color: var(--red); }
+    .btn.success { border-color: rgba(0,230,118,.3); color: var(--green); }
+    .btn.success:hover { background: rgba(0,230,118,.1); }
+    .btn.sm { padding: 5px 10px; font-size: .7rem; }
+    .btn.cyan-btn { border-color: rgba(0,212,255,.3); color: var(--cyan); }
+    .btn.cyan-btn:hover { background: var(--cyan-dim); }
 
-    .stat-value {
-      font-size: 1.5rem;
-      font-weight: 700;
-      letter-spacing: -.5px;
-      line-height: 1.1;
-      animation: countUp .4s ease both;
+    .input-field {
+      width: 100%; padding: 10px 14px; background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); color: var(--text); font-size: .82rem; outline: none;
+      transition: border-color .2s; font-family: inherit;
     }
-    .stat-value.online  { color: var(--green); }
-    .stat-value.offline { color: var(--red); }
-    .stat-value.active  { color: var(--cyan); }
-    .stat-value.inactive{ color: var(--text-muted); }
+    .input-field:focus { border-color: var(--purple); }
+    .input-field::placeholder { color: var(--text-muted); }
+    textarea.input-field { resize: vertical; min-height: 80px; }
+    select.input-field { cursor: pointer; }
 
-    .stat-meta {
-      font-size: .74rem;
-      color: var(--text-muted);
-      margin-top: 4px;
-      display: flex;
-      align-items: center;
-      gap: 5px;
-    }
-    .stat-meta .dot {
-      width: 6px; height: 6px;
-      border-radius: 50%;
-      display: inline-block;
-      flex-shrink: 0;
-    }
-    .dot.green  { background: var(--green); animation: statusPulse 2s ease infinite; }
-    .dot.red    { background: var(--red); }
-    .dot.cyan   { background: var(--cyan); animation: statusPulse 2s ease infinite; }
-    .dot.yellow { background: var(--yellow); }
-
-    .tunnel-url {
-      font-size: .82rem;
-      color: var(--cyan);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      max-width: 130px;
-    }
-    .copy-btn {
-      background: none;
-      border: none;
-      color: var(--text-muted);
-      cursor: pointer;
-      padding: 2px 4px;
-      border-radius: 4px;
-      font-size: 12px;
-      transition: color .2s, background .2s;
-      margin-left: 4px;
-    }
-    .copy-btn:hover { color: var(--cyan); background: var(--cyan-dim); }
-    .copy-btn.copied { color: var(--green); }
-
-    /* ─── Flow Diagram ───────────────────────────────────────── */
-    .flow-section {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 24px 28px;
-      margin-bottom: 28px;
-      animation: fadeInUp .5s .1s ease both;
-      overflow-x: auto;
-    }
-
-    .flow-diagram {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0;
-      min-width: 640px;
-      padding: 10px 0;
-    }
-
-    .flow-node {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 8px;
-      flex-shrink: 0;
-    }
-    .flow-pill {
-      padding: 10px 18px;
-      border-radius: 99px;
-      font-size: .78rem;
-      font-weight: 600;
-      letter-spacing: .3px;
-      display: flex;
-      align-items: center;
-      gap: 7px;
-      position: relative;
-      transition: transform .2s;
-      white-space: nowrap;
-    }
-    .flow-pill:hover { transform: scale(1.05); }
-
-    .flow-pill.internet  { background: rgba(255,215,64,.1);  border: 1px solid rgba(255,215,64,.25); color: var(--yellow); }
-    .flow-pill.phantom   { background: var(--purple-dim);    border: 1px solid rgba(108,99,255,.35); color: var(--purple); box-shadow: 0 0 20px rgba(108,99,255,.2); }
-    .flow-pill.cloudflare{ background: rgba(255,99,71,.1);   border: 1px solid rgba(255,99,71,.25);  color: #ff6347; }
-    .flow-pill.windows   { background: rgba(0,120,215,.12);  border: 1px solid rgba(0,120,215,.3);   color: #0078d7; }
-    .flow-pill.photoshop { background: rgba(49,168,255,.1);  border: 1px solid rgba(49,168,255,.3);  color: #31a8ff; box-shadow: 0 0 20px rgba(49,168,255,.15); }
-
-    .flow-node-label {
-      font-size: .65rem;
-      color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: .8px;
-    }
-
-    .flow-connector {
-      position: relative;
-      flex: 1;
-      height: 2px;
-      min-width: 32px;
-      max-width: 80px;
-      background: linear-gradient(90deg, transparent, rgba(255,255,255,.08), transparent);
-      margin-bottom: 22px;
-      overflow: visible;
-    }
-    .flow-connector::after {
-      content: '▸';
-      position: absolute;
-      right: -7px;
-      top: -8px;
-      font-size: 12px;
-      color: var(--text-muted);
-      opacity: .5;
-    }
-    .flow-dot-anim {
-      position: absolute;
-      top: -3px;
-      width: 6px; height: 6px;
-      border-radius: 50%;
-      background: var(--cyan);
-      box-shadow: 0 0 8px var(--cyan);
-      animation: flow-dot 2.5s linear infinite;
-    }
-    .flow-connector:nth-child(2)  .flow-dot-anim { animation-delay: 0s; }
-    .flow-connector:nth-child(4)  .flow-dot-anim { animation-delay: .5s; }
-    .flow-connector:nth-child(6)  .flow-dot-anim { animation-delay: 1s; }
-    .flow-connector:nth-child(8)  .flow-dot-anim { animation-delay: 1.5s; }
-    .flow-connector:nth-child(10) .flow-dot-anim { animation-delay: 2s; }
-
-    /* ─── Messages Grid ──────────────────────────────────────── */
-    .messages-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 16px;
-      margin-bottom: 28px;
-      animation: fadeInUp .5s .15s ease both;
-    }
-
-    .msg-panel {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      display: flex;
-      flex-direction: column;
-      max-height: 380px;
-    }
-
-    .panel-header {
-      padding: 16px 20px 12px;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-shrink: 0;
-    }
-    .panel-title {
-      font-size: .85rem;
-      font-weight: 600;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .panel-title .badge {
-      font-size: .65rem;
-      padding: 2px 8px;
-      border-radius: 99px;
-      font-weight: 700;
-    }
+    .panel-header { padding: 16px 20px 12px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+    .panel-title { font-size: .85rem; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+    .badge { font-size: .65rem; padding: 2px 8px; border-radius: 99px; font-weight: 700; }
     .badge.purple { background: var(--purple-dim); color: var(--purple); border: 1px solid rgba(108,99,255,.2); }
-    .badge.cyan   { background: var(--cyan-dim);   color: var(--cyan);   border: 1px solid rgba(0,212,255,.2); }
+    .badge.cyan { background: var(--cyan-dim); color: var(--cyan); border: 1px solid rgba(0,212,255,.2); }
+    .badge.green { background: rgba(0,230,118,.08); color: var(--green); border: 1px solid rgba(0,230,118,.2); }
+    .badge.yellow { background: rgba(255,215,64,.08); color: var(--yellow); border: 1px solid rgba(255,215,64,.2); }
+    .badge.red { background: rgba(255,82,82,.08); color: var(--red); border: 1px solid rgba(255,82,82,.2); }
+    .badge.orange { background: rgba(255,145,0,.08); color: var(--orange); border: 1px solid rgba(255,145,0,.2); }
 
-    .refresh-tag {
-      font-size: .65rem;
-      color: var(--text-muted);
-      display: flex;
-      align-items: center;
-      gap: 5px;
-    }
-    .refresh-spinner {
-      width: 10px; height: 10px;
-      border: 1.5px solid var(--text-muted);
-      border-top-color: var(--purple);
-      border-radius: 50%;
-    }
+    .refresh-tag { font-size: .65rem; color: var(--text-muted); display: flex; align-items: center; gap: 5px; }
+    .refresh-spinner { width: 10px; height: 10px; border: 1.5px solid var(--text-muted);
+      border-top-color: var(--purple); border-radius: 50%; }
     .refresh-spinner.spinning { animation: spin .7s linear infinite; }
 
-    .msg-feed {
-      flex: 1;
-      overflow-y: auto;
-      padding: 12px 14px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-    .msg-feed:empty::before {
-      content: 'No messages yet…';
-      color: var(--text-muted);
-      font-size: .78rem;
-      text-align: center;
-      margin: auto;
-      padding: 20px;
-    }
-
-    .msg-bubble {
-      display: flex;
-      flex-direction: column;
-      gap: 3px;
-      animation: fadeInUp .3s ease;
-    }
-    .msg-bubble-inner {
-      padding: 9px 13px;
-      border-radius: 10px;
-      font-size: .8rem;
-      line-height: 1.45;
-      max-width: 100%;
-      word-break: break-word;
-    }
-    .msg-bubble.mac .msg-bubble-inner  { background: var(--purple-dim); border: 1px solid rgba(108,99,255,.2); color: var(--text); }
-    .msg-bubble.win .msg-bubble-inner  { background: var(--cyan-dim);   border: 1px solid rgba(0,212,255,.2);  color: var(--text); }
-    .msg-meta {
-      font-size: .65rem;
-      color: var(--text-muted);
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      padding: 0 2px;
-    }
-    .msg-from {
-      font-weight: 600;
-      color: var(--text-dim);
-    }
-
-    /* ─── Task Queue ─────────────────────────────────────────── */
-    .tasks-section {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      margin-bottom: 28px;
-      animation: fadeInUp .5s .2s ease both;
-      overflow: hidden;
-    }
-
-    .tasks-table-wrap { overflow-x: auto; }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: .82rem;
-    }
-    thead tr {
-      background: var(--bg2);
-    }
-    th {
-      padding: 11px 18px;
-      text-align: left;
-      font-size: .68rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      color: var(--text-muted);
-      white-space: nowrap;
-      border-bottom: 1px solid var(--border);
-    }
-    td {
-      padding: 13px 18px;
-      border-bottom: 1px solid rgba(255,255,255,.03);
-      color: var(--text-dim);
-      vertical-align: middle;
-    }
-    tr:last-child td { border-bottom: none; }
-    tr:hover td { background: rgba(255,255,255,.02); }
-
-    .task-label {
-      font-weight: 600;
-      color: var(--text);
-      max-width: 180px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-    .task-cmd {
-      font-family: 'JetBrains Mono', 'Fira Code', monospace;
-      font-size: .72rem;
-      color: var(--text-muted);
-      max-width: 200px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-    .task-result {
-      font-family: 'JetBrains Mono', 'Fira Code', monospace;
-      font-size: .72rem;
-      color: var(--text-dim);
-      max-width: 220px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-    .task-duration {
-      white-space: nowrap;
-      font-variant-numeric: tabular-nums;
-    }
-
-    .status-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      padding: 3px 10px;
-      border-radius: 99px;
-      font-size: .68rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: .5px;
-      white-space: nowrap;
-    }
-    .status-badge.pending  { background: rgba(255,215,64,.1);  color: var(--yellow); border: 1px solid rgba(255,215,64,.2); }
-    .status-badge.running  { background: rgba(0,212,255,.1);   color: var(--cyan);   border: 1px solid rgba(0,212,255,.2); animation: blink 1.2s ease infinite; }
-    .status-badge.done     { background: rgba(0,230,118,.1);   color: var(--green);  border: 1px solid rgba(0,230,118,.2); }
-    .status-badge.error    { background: rgba(255,82,82,.1);   color: var(--red);    border: 1px solid rgba(255,82,82,.2); }
-
-    .status-badge-dot {
-      width: 5px; height: 5px;
-      border-radius: 50%;
-      background: currentColor;
-      flex-shrink: 0;
-    }
-
-    /* ─── System Info ────────────────────────────────────────── */
-    .sysinfo-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 16px;
-      animation: fadeInUp .5s .25s ease both;
-    }
-
-    .info-card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 20px 22px;
-      transition: border-color .2s, transform .2s;
-    }
-    .info-card:hover {
-      border-color: var(--border2);
-      transform: translateY(-2px);
-    }
-    .info-card-title {
-      font-size: .68rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      color: var(--text-muted);
-      margin-bottom: 12px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .info-card-title .icon { font-size: 14px; }
-    .info-value {
-      font-size: .95rem;
-      font-weight: 600;
-      color: var(--text);
-      word-break: break-all;
-    }
-    .info-value.mono {
-      font-family: 'JetBrains Mono', 'Fira Code', monospace;
-      font-size: .78rem;
-      color: var(--cyan);
-    }
-    .info-sub {
-      font-size: .72rem;
-      color: var(--text-muted);
-      margin-top: 6px;
-    }
-
-    .tunnel-link {
-      color: var(--cyan);
-      text-decoration: none;
-      font-family: 'JetBrains Mono', 'Fira Code', monospace;
-      font-size: .75rem;
-      transition: opacity .2s;
-      display: flex;
-      align-items: center;
-      gap: 5px;
-    }
-    .tunnel-link:hover { opacity: .75; }
-
-    /* ─── Skeleton ───────────────────────────────────────────── */
-    .skeleton {
-      background: linear-gradient(90deg, var(--card2) 25%, rgba(255,255,255,.04) 50%, var(--card2) 75%);
-      background-size: 600px 100%;
-      animation: shimmer 1.4s ease infinite;
-      border-radius: 6px;
-    }
-    .sk-line { height: 14px; margin-bottom: 8px; }
-    .sk-line.short { width: 60%; }
-    .sk-line.long  { width: 90%; }
-    .sk-line.mid   { width: 75%; }
-    .sk-block { height: 42px; margin-bottom: 8px; border-radius: 8px; }
-
-    /* ─── Empty / Offline ────────────────────────────────────── */
-    .empty-state {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 32px 20px;
-      color: var(--text-muted);
-      gap: 8px;
-    }
+    .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 32px 20px; color: var(--text-muted); gap: 8px; }
     .empty-state .icon { font-size: 28px; opacity: .4; }
     .empty-state p { font-size: .78rem; }
 
-    /* ─── Scrollbar in feeds ─────────────────────────────────── */
+    .skeleton { background: linear-gradient(90deg,var(--card2) 25%,rgba(255,255,255,.04) 50%,var(--card2) 75%);
+      background-size: 600px 100%; animation: shimmer 1.4s ease infinite; border-radius: 6px; }
+    .sk-block { height: 42px; margin-bottom: 8px; border-radius: 8px; }
+
+    /* ─── STATS ROW ─── */
+    .stats-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; margin-bottom: 24px; animation: fadeInUp .5s ease both; }
+    .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 18px 20px; position: relative; overflow: hidden; transition: transform .2s, box-shadow .2s, border-color .2s; cursor: default; }
+    .stat-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-glow); border-color: var(--border2); }
+    .stat-card::before { content:''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg,var(--purple),var(--cyan)); opacity: 0; transition: opacity .3s; }
+    .stat-card:hover::before { opacity: 1; }
+    .stat-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .stat-label { font-size: .7rem; font-weight: 600; text-transform: uppercase; letter-spacing: .8px; color: var(--text-muted); }
+    .stat-icon { width: 34px; height: 34px; border-radius: var(--radius-sm);
+      display: flex; align-items: center; justify-content: center; font-size: 15px; }
+    .stat-icon.purple { background: var(--purple-dim); }
+    .stat-icon.cyan { background: var(--cyan-dim); }
+    .stat-icon.green { background: rgba(0,230,118,.12); }
+    .stat-icon.yellow { background: rgba(255,215,64,.12); }
+    .stat-value { font-size: 1.4rem; font-weight: 700; letter-spacing: -.5px; line-height: 1.1; animation: countUp .4s ease both; }
+    .stat-value.online { color: var(--green); }
+    .stat-value.offline { color: var(--red); }
+    .stat-value.active { color: var(--cyan); }
+    .stat-value.inactive { color: var(--text-muted); }
+    .stat-meta { font-size: .72rem; color: var(--text-muted); margin-top: 4px; display: flex; align-items: center; gap: 5px; }
+    .dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+    .dot.green { background: var(--green); animation: statusPulse 2s ease infinite; }
+    .dot.red { background: var(--red); }
+    .dot.cyan { background: var(--cyan); animation: statusPulse 2s ease infinite; }
+    .dot.yellow { background: var(--yellow); }
+    .tunnel-url { font-size: .8rem; color: var(--cyan); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 130px; }
+    .copy-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 2px 4px;
+      border-radius: 4px; font-size: 12px; transition: color .2s, background .2s; margin-left: 4px; }
+    .copy-btn:hover { color: var(--cyan); background: var(--cyan-dim); }
+    .copy-btn.copied { color: var(--green); }
+
+    /* ─── FLOW DIAGRAM ─── */
+    .flow-section { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 20px 24px; margin-bottom: 24px; animation: fadeInUp .5s .1s ease both; overflow-x: auto; }
+    .flow-diagram { display: flex; align-items: center; justify-content: center; gap: 0; min-width: 600px; padding: 8px 0; }
+    .flow-node { display: flex; flex-direction: column; align-items: center; gap: 6px; flex-shrink: 0; }
+    .flow-pill { padding: 8px 16px; border-radius: 99px; font-size: .75rem; font-weight: 600; letter-spacing: .3px;
+      display: flex; align-items: center; gap: 6px; position: relative; transition: transform .2s; white-space: nowrap; }
+    .flow-pill:hover { transform: scale(1.05); }
+    .flow-pill.internet { background: rgba(255,215,64,.1); border: 1px solid rgba(255,215,64,.25); color: var(--yellow); }
+    .flow-pill.phantom { background: var(--purple-dim); border: 1px solid rgba(108,99,255,.35); color: var(--purple); box-shadow: 0 0 20px rgba(108,99,255,.2); }
+    .flow-pill.cloudflare { background: rgba(255,99,71,.1); border: 1px solid rgba(255,99,71,.25); color: #ff6347; }
+    .flow-pill.windows { background: rgba(0,120,215,.12); border: 1px solid rgba(0,120,215,.3); color: #0078d7; }
+    .flow-pill.photoshop { background: rgba(49,168,255,.1); border: 1px solid rgba(49,168,255,.3); color: #31a8ff; }
+    .flow-node-label { font-size: .6rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: .8px; }
+    .flow-connector { position: relative; flex: 1; height: 2px; min-width: 28px; max-width: 70px;
+      background: linear-gradient(90deg,transparent,rgba(255,255,255,.08),transparent); margin-bottom: 20px; overflow: visible; }
+    .flow-connector::after { content:'▸'; position: absolute; right: -7px; top: -8px; font-size: 12px; color: var(--text-muted); opacity: .5; }
+    .flow-dot-anim { position: absolute; top: -3px; width: 6px; height: 6px; border-radius: 50%;
+      background: var(--cyan); box-shadow: 0 0 8px var(--cyan); animation: flow-dot 2.5s linear infinite; }
+
+    /* ─── MESSAGES ─── */
+    .messages-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 24px; animation: fadeInUp .5s .15s ease both; }
+    .msg-panel { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+      display: flex; flex-direction: column; max-height: 350px; }
+    .msg-feed { flex: 1; overflow-y: auto; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+    .msg-feed:empty::before { content: 'No messages yet...'; color: var(--text-muted); font-size: .78rem; text-align: center; margin: auto; padding: 20px; }
+    .msg-bubble { display: flex; flex-direction: column; gap: 3px; animation: fadeInUp .3s ease; }
+    .msg-bubble-inner { padding: 8px 12px; border-radius: 10px; font-size: .78rem; line-height: 1.4; max-width: 100%; word-break: break-word; }
+    .msg-bubble.mac .msg-bubble-inner { background: var(--purple-dim); border: 1px solid rgba(108,99,255,.2); }
+    .msg-bubble.win .msg-bubble-inner { background: var(--cyan-dim); border: 1px solid rgba(0,212,255,.2); }
+    .msg-meta { font-size: .62rem; color: var(--text-muted); display: flex; align-items: center; gap: 5px; padding: 0 2px; }
+    .msg-from { font-weight: 600; color: var(--text-dim); }
     .msg-feed::-webkit-scrollbar { width: 3px; }
     .msg-feed::-webkit-scrollbar-thumb { background: rgba(255,255,255,.08); }
 
-    /* ─── Responsive ─────────────────────────────────────────── */
-    @media (max-width: 1100px) {
-      .stats-row { grid-template-columns: repeat(2, 1fr); }
-      .sysinfo-grid { grid-template-columns: repeat(2, 1fr); }
+    /* ─── TASKS TABLE ─── */
+    .tasks-section { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+      margin-bottom: 24px; animation: fadeInUp .5s .2s ease both; overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; font-size: .8rem; }
+    thead tr { background: var(--bg2); }
+    th { padding: 10px 16px; text-align: left; font-size: .66rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 1px; color: var(--text-muted); white-space: nowrap; border-bottom: 1px solid var(--border); }
+    td { padding: 11px 16px; border-bottom: 1px solid rgba(255,255,255,.03); color: var(--text-dim); vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255,255,255,.02); }
+    .task-label { font-weight: 600; color: var(--text); max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .task-cmd { font-family: 'JetBrains Mono','Fira Code',monospace; font-size: .7rem; color: var(--text-muted); max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .status-badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 99px;
+      font-size: .66rem; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; white-space: nowrap; }
+    .status-badge.pending { background: rgba(255,215,64,.1); color: var(--yellow); border: 1px solid rgba(255,215,64,.2); }
+    .status-badge.running { background: rgba(0,212,255,.1); color: var(--cyan); border: 1px solid rgba(0,212,255,.2); animation: blink 1.2s ease infinite; }
+    .status-badge.done { background: rgba(0,230,118,.1); color: var(--green); border: 1px solid rgba(0,230,118,.2); }
+    .status-badge.error { background: rgba(255,82,82,.1); color: var(--red); border: 1px solid rgba(255,82,82,.2); }
+    .status-badge-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+
+    /* ─── SYSINFO ─── */
+    .sysinfo-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; animation: fadeInUp .5s .25s ease both; }
+    .info-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 18px 20px; transition: border-color .2s, transform .2s; }
+    .info-card:hover { border-color: var(--border2); transform: translateY(-2px); }
+    .info-card-title { font-size: .66rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
+      color: var(--text-muted); margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+    .info-value { font-size: .9rem; font-weight: 600; color: var(--text); word-break: break-all; }
+    .info-value.mono { font-family: 'JetBrains Mono','Fira Code',monospace; font-size: .75rem; color: var(--cyan); }
+    .info-sub { font-size: .7rem; color: var(--text-muted); margin-top: 5px; }
+    .tunnel-link { color: var(--cyan); text-decoration: none; font-family: 'JetBrains Mono','Fira Code',monospace;
+      font-size: .72rem; transition: opacity .2s; display: flex; align-items: center; gap: 5px; }
+    .tunnel-link:hover { opacity: .75; }
+
+    /* ─── TERMINAL ─── */
+    .terminal-wrap { background: #0d0d0d; border: 1px solid var(--border); border-radius: var(--radius);
+      overflow: hidden; display: flex; flex-direction: column; height: calc(100vh - var(--header-h) - 3px - 120px); min-height: 400px; }
+    .terminal-bar { padding: 8px 16px; background: #1a1a1a; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between; }
+    .terminal-dots { display: flex; gap: 6px; }
+    .terminal-dots span { width: 10px; height: 10px; border-radius: 50%; }
+    .terminal-title { font-size: .72rem; color: var(--text-muted); font-family: 'JetBrains Mono','Fira Code',monospace; }
+    .terminal-output {
+      flex: 1; overflow-y: auto; padding: 12px 16px;
+      font-family: 'JetBrains Mono','Fira Code','Courier New',monospace;
+      font-size: .78rem; line-height: 1.5; color: #33ff33;
     }
-    @media (max-width: 720px) {
-      .page-wrapper { padding: 16px 14px 40px; }
+    .terminal-output .cmd-line { color: #33ff33; }
+    .terminal-output .cmd-prompt { color: var(--cyan); }
+    .terminal-output .cmd-response { color: #aaa; }
+    .terminal-output .cmd-error { color: var(--red); }
+    .terminal-output .cmd-info { color: var(--yellow); }
+    .terminal-input-row { display: flex; align-items: center; padding: 8px 16px; background: #111;
+      border-top: 1px solid var(--border); gap: 8px; }
+    .terminal-prompt { color: var(--cyan); font-family: 'JetBrains Mono','Fira Code',monospace; font-size: .78rem; white-space: nowrap; }
+    .terminal-input {
+      flex: 1; background: none; border: none; color: #33ff33; font-size: .78rem;
+      font-family: 'JetBrains Mono','Fira Code','Courier New',monospace; outline: none; caret-color: #33ff33;
+    }
+
+    /* ─── FILE BROWSER ─── */
+    .file-browser { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    .file-toolbar { padding: 12px 16px; background: var(--bg2); border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .breadcrumb { display: flex; align-items: center; gap: 4px; font-size: .78rem; color: var(--text-dim); flex: 1; min-width: 200px; }
+    .breadcrumb span { cursor: pointer; padding: 2px 6px; border-radius: 4px; transition: all .2s; }
+    .breadcrumb span:hover { background: var(--purple-dim); color: var(--purple); }
+    .breadcrumb .sep { color: var(--text-muted); cursor: default; padding: 0; }
+    .breadcrumb .sep:hover { background: none; color: var(--text-muted); }
+    .file-list { padding: 8px; }
+    .file-item { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: var(--radius-sm);
+      cursor: pointer; transition: background .15s; }
+    .file-item:hover { background: rgba(255,255,255,.04); }
+    .file-item .file-icon { font-size: 20px; width: 28px; text-align: center; }
+    .file-item .file-name { flex: 1; font-size: .82rem; font-weight: 500; }
+    .file-item .file-size { font-size: .72rem; color: var(--text-muted); min-width: 60px; text-align: right; }
+    .file-item .file-date { font-size: .72rem; color: var(--text-muted); min-width: 80px; text-align: right; }
+
+    /* ─── PHOTOSHOP PANEL ─── */
+    .ps-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 20px; }
+    .ps-action-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; margin-bottom: 20px; }
+    .ps-action-btn {
+      padding: 16px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+      cursor: pointer; text-align: center; transition: all .2s; display: flex; flex-direction: column; align-items: center; gap: 8px;
+    }
+    .ps-action-btn:hover { border-color: var(--cyan); transform: translateY(-2px); box-shadow: 0 0 20px var(--cyan-glow); }
+    .ps-action-btn .ps-icon { font-size: 24px; }
+    .ps-action-btn .ps-label { font-size: .78rem; font-weight: 600; color: var(--text); }
+    .ps-action-btn .ps-desc { font-size: .65rem; color: var(--text-muted); }
+    .script-editor { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    .script-editor textarea {
+      width: 100%; min-height: 200px; padding: 16px; background: #0d0d0d; border: none; color: #e6db74;
+      font-family: 'JetBrains Mono','Fira Code',monospace; font-size: .78rem; line-height: 1.5;
+      resize: vertical; outline: none;
+    }
+
+    /* ─── SEND MESSAGE PANEL ─── */
+    .send-msg-panel { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 20px; margin-bottom: 20px; }
+    .send-msg-row { display: flex; gap: 10px; align-items: flex-end; }
+    .send-msg-row .input-wrap { flex: 1; }
+    .msg-type-row { display: flex; gap: 8px; margin-bottom: 12px; }
+    .msg-type-btn { padding: 6px 14px; border-radius: 99px; font-size: .72rem; font-weight: 600;
+      border: 1px solid var(--border); background: var(--card2); color: var(--text-dim); cursor: pointer; transition: all .2s; }
+    .msg-type-btn.active { border-color: var(--purple); background: var(--purple-dim); color: var(--purple); }
+
+    /* ─── CRM TABLE ─── */
+    .crm-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    .crm-status { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 99px;
+      font-size: .66rem; font-weight: 700; text-transform: uppercase; }
+    .crm-status.active { background: rgba(0,230,118,.1); color: var(--green); border: 1px solid rgba(0,230,118,.2); }
+    .crm-status.in-progress { background: rgba(0,212,255,.1); color: var(--cyan); border: 1px solid rgba(0,212,255,.2); }
+    .crm-status.paused { background: rgba(255,215,64,.1); color: var(--yellow); border: 1px solid rgba(255,215,64,.2); }
+    .crm-status.completed { background: rgba(108,99,255,.1); color: var(--purple); border: 1px solid rgba(108,99,255,.2); }
+
+    /* ─── MODAL ─── */
+    .modal-overlay { position: fixed; inset: 0; z-index: 500; background: rgba(0,0,0,.7); backdrop-filter: blur(4px);
+      display: flex; align-items: center; justify-content: center; opacity: 0; visibility: hidden; transition: all .3s; }
+    .modal-overlay.show { opacity: 1; visibility: visible; }
+    .modal { background: var(--card); border: 1px solid var(--border2); border-radius: var(--radius);
+      padding: 28px; width: 480px; max-width: 90vw; max-height: 90vh; overflow-y: auto;
+      transform: scale(.9); transition: transform .3s; }
+    .modal-overlay.show .modal { transform: scale(1); }
+    .modal-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; }
+    .modal-close { background: none; border: none; color: var(--text-muted); font-size: 20px; cursor: pointer; padding: 4px; }
+    .modal-close:hover { color: var(--text); }
+    .form-group { margin-bottom: 14px; }
+    .form-label { font-size: .72rem; font-weight: 600; color: var(--text-dim); margin-bottom: 6px; display: block; text-transform: uppercase; letter-spacing: .5px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    /* ─── SYSTEM MONITOR ─── */
+    .monitor-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; margin-bottom: 20px; }
+    .monitor-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
+    .monitor-label { font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 12px; }
+    .monitor-value { font-size: 1.8rem; font-weight: 700; margin-bottom: 4px; }
+    .monitor-bar { height: 6px; background: var(--bg2); border-radius: 99px; overflow: hidden; margin-top: 8px; }
+    .monitor-bar-fill { height: 100%; border-radius: 99px; transition: width .5s; }
+    .uptime-chart { display: flex; align-items: flex-end; gap: 3px; height: 60px; margin-top: 12px; }
+    .uptime-bar { flex: 1; background: var(--purple-dim); border-radius: 2px 2px 0 0; min-width: 6px; transition: height .3s; position: relative; }
+    .uptime-bar:hover { background: var(--purple); }
+
+    /* ─── QUICK ACTIONS ─── */
+    .quick-actions {
+      position: fixed; bottom: 20px; right: 20px; z-index: 300;
+      display: flex; flex-direction: column-reverse; gap: 8px; align-items: flex-end;
+    }
+    .qa-toggle {
+      width: 48px; height: 48px; border-radius: 50%; border: none;
+      background: linear-gradient(135deg,var(--purple),var(--cyan)); color: #fff;
+      font-size: 20px; cursor: pointer; box-shadow: 0 4px 20px rgba(108,99,255,.4);
+      transition: transform .3s; display: flex; align-items: center; justify-content: center;
+    }
+    .qa-toggle:hover { transform: scale(1.1); }
+    .qa-toggle.open { transform: rotate(45deg); }
+    .qa-menu { display: flex; flex-direction: column-reverse; gap: 6px; max-height: 0; overflow: hidden; transition: max-height .3s; }
+    .qa-menu.open { max-height: 300px; }
+    .qa-btn {
+      display: flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 99px;
+      background: var(--card); border: 1px solid var(--border2); color: var(--text);
+      font-size: .75rem; font-weight: 600; cursor: pointer; white-space: nowrap; transition: all .2s;
+      box-shadow: 0 4px 16px rgba(0,0,0,.3);
+    }
+    .qa-btn:hover { border-color: var(--purple); transform: translateX(-4px); }
+    .qa-btn .qa-icon { font-size: 14px; }
+
+    /* ─── TOAST ─── */
+    #toast {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px);
+      background: #1e2028; border: 1px solid var(--border2); border-radius: 99px;
+      padding: 9px 22px; font-size: .78rem; font-weight: 600; color: var(--green);
+      box-shadow: 0 8px 32px rgba(0,0,0,.5); z-index: 999;
+      transition: transform .3s cubic-bezier(.34,1.56,.64,1); pointer-events: none;
+    }
+    #toast.show { transform: translateX(-50%) translateY(0); }
+
+    /* ─── SETTINGS ─── */
+    .settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .setting-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
+    .setting-title { font-size: .82rem; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+    .setting-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border); }
+    .setting-row:last-child { border: none; }
+    .setting-key { font-size: .78rem; color: var(--text-dim); }
+    .setting-val { font-size: .78rem; color: var(--text); font-weight: 600; font-family: 'JetBrains Mono','Fira Code',monospace; }
+
+    /* ─── RESPONSIVE ─── */
+    @media (max-width: 1100px) {
+      .stats-row { grid-template-columns: repeat(2,1fr); }
+      .sysinfo-grid, .monitor-grid, .settings-grid { grid-template-columns: repeat(2,1fr); }
+      .ps-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 768px) {
+      .sidebar { transform: translateX(-100%); width: var(--sidebar-w); }
+      .sidebar.mobile-open { transform: translateX(0); }
+      .sidebar.collapsed { transform: translateX(-100%); }
+      .main-content { margin-left: 0 !important; }
       .stats-row { grid-template-columns: 1fr 1fr; gap: 10px; }
       .messages-grid { grid-template-columns: 1fr; }
-      .sysinfo-grid { grid-template-columns: 1fr; }
-      header { padding: 0 16px; }
+      .sysinfo-grid, .monitor-grid, .settings-grid { grid-template-columns: 1fr; }
       .live-clock { display: none; }
-      .logo-sub { display: none; }
+      .form-row { grid-template-columns: 1fr; }
     }
     @media (max-width: 440px) {
       .stats-row { grid-template-columns: 1fr; }
+      .main-content { padding: 14px; }
     }
-
-    /* ─── Top gradient bar ───────────────────────────────────── */
-    .top-bar {
-      height: 3px;
-      background: linear-gradient(90deg, var(--purple), var(--cyan), var(--purple));
-      background-size: 200% auto;
-      animation: gradientShift 3s linear infinite;
-    }
-
-    /* ─── Footer ─────────────────────────────────────────────── */
-    .footer {
-      text-align: center;
-      padding: 12px 0 0;
-      font-size: .68rem;
-      color: var(--text-muted);
-      letter-spacing: .5px;
-    }
-    .footer a {
-      color: var(--purple);
-      text-decoration: none;
-    }
-
-    /* ─── Tooltip ────────────────────────────────────────────── */
-    [data-tip] {
-      position: relative;
-    }
-    [data-tip]::after {
-      content: attr(data-tip);
-      position: absolute;
-      bottom: calc(100% + 6px);
-      left: 50%;
-      transform: translateX(-50%);
-      background: #1e2028;
-      border: 1px solid var(--border2);
-      color: var(--text);
-      font-size: .68rem;
-      padding: 4px 10px;
-      border-radius: 6px;
-      white-space: nowrap;
-      pointer-events: none;
-      opacity: 0;
-      transition: opacity .2s;
-      z-index: 99;
-    }
-    [data-tip]:hover::after { opacity: 1; }
-
-    /* ─── Notification toast ─────────────────────────────────── */
-    #toast {
-      position: fixed;
-      bottom: 24px;
-      left: 50%;
-      transform: translateX(-50%) translateY(80px);
-      background: #1e2028;
-      border: 1px solid var(--border2);
-      border-radius: 99px;
-      padding: 9px 22px;
-      font-size: .78rem;
-      font-weight: 600;
-      color: var(--green);
-      box-shadow: 0 8px 32px rgba(0,0,0,.5);
-      z-index: 999;
-      transition: transform .3s cubic-bezier(.34,1.56,.64,1);
-      pointer-events: none;
-    }
-    #toast.show { transform: translateX(-50%) translateY(0); }
   </style>
 </head>
 <body>
 
-<div class="top-bar"></div>
-
-<!-- ── Header ─────────────────────────────────────────────── -->
-<header>
-  <div class="logo">
-    <div class="logo-icon">👻</div>
-    <div>
-      <div class="logo-text">PhantomBridge</div>
-      <div class="logo-sub">Control Center</div>
-    </div>
-  </div>
-
-  <div class="header-right">
-    <div class="live-clock" id="clock">—</div>
-    <div class="conn-badge offline" id="conn-badge">
-      <div class="conn-dot"></div>
-      <span id="conn-text">Connecting…</span>
-    </div>
-  </div>
-</header>
-
-<!-- ── Page ───────────────────────────────────────────────── -->
-<div class="page-wrapper">
-
-  <!-- Stats Row -->
-  <div class="section-label">Overview</div>
-  <div class="stats-row">
-
-    <!-- Windows Server -->
-    <div class="stat-card">
-      <div class="card-shine"></div>
-      <div class="stat-header">
-        <div class="stat-label">Windows Server</div>
-        <div class="stat-icon purple">🖥️</div>
-      </div>
-      <div class="stat-value offline" id="s-windows">—</div>
-      <div class="stat-meta">
-        <span class="dot red" id="s-windows-dot"></span>
-        <span id="s-windows-meta">Checking…</span>
-      </div>
-    </div>
-
-    <!-- Photoshop -->
-    <div class="stat-card">
-      <div class="card-shine"></div>
-      <div class="stat-header">
-        <div class="stat-label">Photoshop</div>
-        <div class="stat-icon cyan">🎨</div>
-      </div>
-      <div class="stat-value inactive" id="s-photoshop">—</div>
-      <div class="stat-meta">
-        <span class="dot yellow" id="s-ps-dot"></span>
-        <span id="s-ps-meta">Checking…</span>
-      </div>
-    </div>
-
-    <!-- Tunnel -->
-    <div class="stat-card">
-      <div class="card-shine"></div>
-      <div class="stat-header">
-        <div class="stat-label">Public Tunnel</div>
-        <div class="stat-icon green">🌐</div>
-      </div>
-      <div style="display:flex; align-items:center; gap:4px;">
-        <div class="tunnel-url" id="s-tunnel">—</div>
-        <button class="copy-btn" id="copy-tunnel-btn" onclick="copyTunnel()" data-tip="Copy URL">⎘</button>
-      </div>
-      <div class="stat-meta">
-        <span class="dot green" id="s-tunnel-dot" style="background:var(--text-muted)"></span>
-        <span id="s-tunnel-meta">Fetching…</span>
-      </div>
-    </div>
-
-    <!-- Messages -->
-    <div class="stat-card">
-      <div class="card-shine"></div>
-      <div class="stat-header">
-        <div class="stat-label">Total Messages</div>
-        <div class="stat-icon yellow">💬</div>
-      </div>
-      <div class="stat-value" id="s-msgs" style="color:var(--yellow)">—</div>
-      <div class="stat-meta">
-        <span class="dot yellow"></span>
-        <span id="s-msgs-meta">Mac + Windows queue</span>
-      </div>
-    </div>
-
-  </div>
-
-  <!-- Connection Flow -->
-  <div class="section-label">Signal Path</div>
-  <div class="flow-section">
-    <div class="flow-diagram">
-      <div class="flow-node">
-        <div class="flow-pill internet">🌍 Internet</div>
-        <div class="flow-node-label">Client</div>
-      </div>
-      <div class="flow-connector"><div class="flow-dot-anim"></div></div>
-      <div class="flow-node">
-        <div class="flow-pill phantom">👻 PhantomBridge</div>
-        <div class="flow-node-label">Mac · Node.js</div>
-      </div>
-      <div class="flow-connector"><div class="flow-dot-anim"></div></div>
-      <div class="flow-node">
-        <div class="flow-pill cloudflare">☁️ Cloudflare</div>
-        <div class="flow-node-label">Tunnel</div>
-      </div>
-      <div class="flow-connector"><div class="flow-dot-anim"></div></div>
-      <div class="flow-node">
-        <div class="flow-pill windows">🪟 Windows</div>
-        <div class="flow-node-label">Server · :4000</div>
-      </div>
-      <div class="flow-connector"><div class="flow-dot-anim"></div></div>
-      <div class="flow-node">
-        <div class="flow-pill photoshop">🔷 Photoshop</div>
-        <div class="flow-node-label">Creative Engine</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Messages -->
-  <div class="section-label">Live Message Feed</div>
-  <div class="messages-grid">
-
-    <!-- Mac → Windows -->
-    <div class="msg-panel">
-      <div class="panel-header">
-        <div class="panel-title">
-          🍎 Mac → Windows
-          <span class="badge purple" id="mac-count">0</span>
-        </div>
-        <div class="refresh-tag">
-          <div class="refresh-spinner" id="spin-mac"></div>
-          Auto-refresh 5s
-        </div>
-      </div>
-      <div class="msg-feed" id="feed-mac">
-        <div class="sk-block skeleton"></div>
-        <div class="sk-block skeleton"></div>
-        <div class="sk-block skeleton"></div>
-      </div>
-    </div>
-
-    <!-- Windows → Mac -->
-    <div class="msg-panel">
-      <div class="panel-header">
-        <div class="panel-title">
-          🪟 Windows → Mac
-          <span class="badge cyan" id="win-count">0</span>
-        </div>
-        <div class="refresh-tag">
-          <div class="refresh-spinner" id="spin-win"></div>
-          Auto-refresh 5s
-        </div>
-      </div>
-      <div class="msg-feed" id="feed-win">
-        <div class="sk-block skeleton"></div>
-        <div class="sk-block skeleton"></div>
-        <div class="sk-block skeleton"></div>
-      </div>
-    </div>
-
-  </div>
-
-  <!-- Tasks -->
-  <div class="section-label">Task Queue</div>
-  <div class="tasks-section">
-    <div class="panel-header">
-      <div class="panel-title">
-        ⚡ Recent Tasks
-        <span class="badge purple" id="task-count">0</span>
-      </div>
-      <div class="refresh-tag">
-        <div class="refresh-spinner" id="spin-tasks"></div>
-        Auto-refresh 5s
-      </div>
-    </div>
-    <div class="tasks-table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Label / Command</th>
-            <th>Status</th>
-            <th>Result</th>
-            <th>Duration</th>
-            <th>Created</th>
-          </tr>
-        </thead>
-        <tbody id="tasks-body">
-          <tr>
-            <td colspan="6">
-              <div class="empty-state">
-                <div class="icon">📋</div>
-                <p>Loading tasks…</p>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-
-  <!-- System Info -->
-  <div class="section-label">System Info</div>
-  <div class="sysinfo-grid">
-
-    <div class="info-card">
-      <div class="info-card-title"><span class="icon">⏱️</span> Session Uptime</div>
-      <div class="info-value" id="si-uptime">—</div>
-      <div class="info-sub" id="si-uptime-sub">Since dashboard loaded</div>
-    </div>
-
-    <div class="info-card">
-      <div class="info-card-title"><span class="icon">📡</span> Last Registration</div>
-      <div class="info-value" id="si-lastseen">—</div>
-      <div class="info-sub">PhantomBridge heartbeat</div>
-    </div>
-
-    <div class="info-card">
-      <div class="info-card-title"><span class="icon">🔗</span> Tunnel URL</div>
-      <div id="si-tunnel-wrap">
-        <div class="info-value mono" id="si-tunnel">—</div>
-      </div>
-      <div class="info-sub">Public endpoint (Cloudflare)</div>
-    </div>
-
-  </div>
-
-  <div class="footer">
-    PhantomBridge Dashboard · <a href="#">mac ↔ windows automation bridge</a>
+<!-- LOGIN OVERLAY -->
+<div id="login-overlay">
+  <div class="login-box">
+    <div class="login-logo">&#x1F47B;</div>
+    <div class="login-title">PhantomBridge</div>
+    <div class="login-sub">Remote Control Center</div>
+    <input type="password" class="login-input" id="login-pass" placeholder="Enter password..." autofocus />
+    <button class="login-btn" onclick="doLogin()">Access Control Center</button>
+    <div class="login-error" id="login-error"></div>
   </div>
 </div>
 
-<!-- Toast -->
+<div class="top-bar"></div>
+
+<!-- HEADER -->
+<header>
+  <div class="header-left">
+    <button class="sidebar-toggle" onclick="toggleSidebar()">&#9776;</button>
+    <div class="logo">
+      <div class="logo-icon">&#x1F47B;</div>
+      <div class="logo-text">PhantomBridge</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="live-clock" id="clock">&mdash;</div>
+    <div class="conn-badge offline" id="conn-badge">
+      <div class="conn-dot"></div>
+      <span id="conn-text">Connecting...</span>
+    </div>
+    <button class="logout-btn" onclick="doLogout()">Logout</button>
+  </div>
+</header>
+
+<!-- SIDEBAR -->
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-nav">
+    <button class="nav-item active" data-tab="dashboard" onclick="switchTab('dashboard')">
+      <span class="nav-icon">&#x1F4CA;</span><span class="nav-label">Dashboard</span>
+    </button>
+    <button class="nav-item" data-tab="terminal" onclick="switchTab('terminal')">
+      <span class="nav-icon">&#x1F4BB;</span><span class="nav-label">Terminal</span>
+    </button>
+    <button class="nav-item" data-tab="files" onclick="switchTab('files')">
+      <span class="nav-icon">&#x1F4C1;</span><span class="nav-label">Files</span>
+    </button>
+    <button class="nav-item" data-tab="messages" onclick="switchTab('messages')">
+      <span class="nav-icon">&#x1F4AC;</span><span class="nav-label">Messages</span>
+    </button>
+    <button class="nav-item" data-tab="tasks" onclick="switchTab('tasks')">
+      <span class="nav-icon">&#x26A1;</span><span class="nav-label">Tasks</span>
+    </button>
+    <button class="nav-item" data-tab="photoshop" onclick="switchTab('photoshop')">
+      <span class="nav-icon">&#x1F3A8;</span><span class="nav-label">Photoshop</span>
+    </button>
+    <div class="nav-divider"></div>
+    <button class="nav-item" data-tab="clients" onclick="switchTab('clients')">
+      <span class="nav-icon">&#x1F465;</span><span class="nav-label">Clients</span>
+    </button>
+    <button class="nav-item" data-tab="monitor" onclick="switchTab('monitor')">
+      <span class="nav-icon">&#x1F4C8;</span><span class="nav-label">Monitor</span>
+    </button>
+    <button class="nav-item" data-tab="settings" onclick="switchTab('settings')">
+      <span class="nav-icon">&#x2699;&#xFE0F;</span><span class="nav-label">Settings</span>
+    </button>
+  </div>
+  <div class="sidebar-footer">PhantomBridge v2.0</div>
+</nav>
+
+<!-- MAIN CONTENT -->
+<div class="main-content" id="main-content">
+
+<!-- ============== TAB: DASHBOARD ============== -->
+<div class="tab-page active" id="page-dashboard">
+  <div class="section-label">Overview</div>
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-header">
+        <div class="stat-label">Windows Server</div>
+        <div class="stat-icon purple">&#x1F5A5;&#xFE0F;</div>
+      </div>
+      <div class="stat-value offline" id="s-windows">&mdash;</div>
+      <div class="stat-meta"><span class="dot red" id="s-windows-dot"></span><span id="s-windows-meta">Checking...</span></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-header">
+        <div class="stat-label">Photoshop</div>
+        <div class="stat-icon cyan">&#x1F3A8;</div>
+      </div>
+      <div class="stat-value inactive" id="s-photoshop">&mdash;</div>
+      <div class="stat-meta"><span class="dot yellow" id="s-ps-dot"></span><span id="s-ps-meta">Checking...</span></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-header">
+        <div class="stat-label">Public Tunnel</div>
+        <div class="stat-icon green">&#x1F310;</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:4px;">
+        <div class="tunnel-url" id="s-tunnel">&mdash;</div>
+        <button class="copy-btn" id="copy-tunnel-btn" onclick="copyTunnel()">&#x2398;</button>
+      </div>
+      <div class="stat-meta"><span class="dot green" id="s-tunnel-dot" style="background:var(--text-muted)"></span><span id="s-tunnel-meta">Fetching...</span></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-header">
+        <div class="stat-label">Total Messages</div>
+        <div class="stat-icon yellow">&#x1F4AC;</div>
+      </div>
+      <div class="stat-value" id="s-msgs" style="color:var(--yellow)">&mdash;</div>
+      <div class="stat-meta"><span class="dot yellow"></span><span id="s-msgs-meta">Mac + Windows queue</span></div>
+    </div>
+  </div>
+
+  <div class="section-label">Signal Path</div>
+  <div class="flow-section">
+    <div class="flow-diagram">
+      <div class="flow-node"><div class="flow-pill internet">&#x1F30D; Internet</div><div class="flow-node-label">Client</div></div>
+      <div class="flow-connector"><div class="flow-dot-anim"></div></div>
+      <div class="flow-node"><div class="flow-pill phantom">&#x1F47B; PhantomBridge</div><div class="flow-node-label">Render</div></div>
+      <div class="flow-connector"><div class="flow-dot-anim" style="animation-delay:.5s"></div></div>
+      <div class="flow-node"><div class="flow-pill cloudflare">&#x2601;&#xFE0F; Cloudflare</div><div class="flow-node-label">Tunnel</div></div>
+      <div class="flow-connector"><div class="flow-dot-anim" style="animation-delay:1s"></div></div>
+      <div class="flow-node"><div class="flow-pill windows">&#x1FA9F; Windows</div><div class="flow-node-label">Server :4000</div></div>
+      <div class="flow-connector"><div class="flow-dot-anim" style="animation-delay:1.5s"></div></div>
+      <div class="flow-node"><div class="flow-pill photoshop">&#x1F537; Photoshop</div><div class="flow-node-label">Creative Engine</div></div>
+    </div>
+  </div>
+
+  <div class="section-label">Live Message Feed</div>
+  <div class="messages-grid">
+    <div class="msg-panel">
+      <div class="panel-header">
+        <div class="panel-title">&#x1F34E; Mac &#x2192; Windows <span class="badge purple" id="mac-count">0</span></div>
+        <div class="refresh-tag"><div class="refresh-spinner" id="spin-mac"></div>Auto 5s</div>
+      </div>
+      <div class="msg-feed" id="feed-mac"><div class="sk-block skeleton"></div><div class="sk-block skeleton"></div></div>
+    </div>
+    <div class="msg-panel">
+      <div class="panel-header">
+        <div class="panel-title">&#x1FA9F; Windows &#x2192; Mac <span class="badge cyan" id="win-count">0</span></div>
+        <div class="refresh-tag"><div class="refresh-spinner" id="spin-win"></div>Auto 5s</div>
+      </div>
+      <div class="msg-feed" id="feed-win"><div class="sk-block skeleton"></div><div class="sk-block skeleton"></div></div>
+    </div>
+  </div>
+
+  <div class="section-label">System Info</div>
+  <div class="sysinfo-grid">
+    <div class="info-card">
+      <div class="info-card-title">&#x23F1;&#xFE0F; Session Uptime</div>
+      <div class="info-value" id="si-uptime">&mdash;</div>
+      <div class="info-sub">Since dashboard loaded</div>
+    </div>
+    <div class="info-card">
+      <div class="info-card-title">&#x1F4E1; Last Registration</div>
+      <div class="info-value" id="si-lastseen">&mdash;</div>
+      <div class="info-sub">PhantomBridge heartbeat</div>
+    </div>
+    <div class="info-card">
+      <div class="info-card-title">&#x1F517; Tunnel URL</div>
+      <div id="si-tunnel-wrap"><div class="info-value mono" id="si-tunnel">&mdash;</div></div>
+      <div class="info-sub">Public endpoint (Cloudflare)</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============== TAB: TERMINAL ============== -->
+<div class="tab-page" id="page-terminal">
+  <div class="section-label">Remote Terminal</div>
+  <div class="terminal-wrap">
+    <div class="terminal-bar">
+      <div class="terminal-dots">
+        <span style="background:#ff5f56"></span>
+        <span style="background:#ffbd2e"></span>
+        <span style="background:#27c93f"></span>
+      </div>
+      <div class="terminal-title">phantom@windows ~ $</div>
+      <button class="btn sm" onclick="clearTerminal()">Clear</button>
+    </div>
+    <div class="terminal-output" id="term-output">
+      <div class="cmd-info">PhantomBridge Remote Terminal v2.0</div>
+      <div class="cmd-info">Commands are sent to Windows via /send-to-windows</div>
+      <div class="cmd-info">Type 'help' for available commands</div>
+      <div>&nbsp;</div>
+    </div>
+    <div class="terminal-input-row">
+      <span class="terminal-prompt">phantom $</span>
+      <input type="text" class="terminal-input" id="term-input" placeholder="Type a command..." autocomplete="off" spellcheck="false" />
+    </div>
+  </div>
+</div>
+
+<!-- ============== TAB: FILES ============== -->
+<div class="tab-page" id="page-files">
+  <div class="section-label">Remote File Browser</div>
+  <div class="file-browser">
+    <div class="file-toolbar">
+      <div class="breadcrumb" id="file-breadcrumb">
+        <span onclick="navigatePath('C:\\')">C:</span><span class="sep">&#x25B8;</span>
+      </div>
+      <button class="btn sm" onclick="fetchFiles()">&#x1F504; Refresh</button>
+      <button class="btn sm cyan-btn">&#x1F4E4; Upload</button>
+      <button class="btn sm success">&#x1F4C1; New Folder</button>
+    </div>
+    <div class="file-list" id="file-list">
+      <div class="empty-state"><div class="icon">&#x1F4C2;</div><p>Loading files...</p></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============== TAB: MESSAGES ============== -->
+<div class="tab-page" id="page-messages">
+  <div class="section-label">Send Message</div>
+  <div class="send-msg-panel">
+    <div class="msg-type-row">
+      <button class="msg-type-btn active" data-type="message" onclick="setMsgType(this,'message')">&#x1F4AC; Message</button>
+      <button class="msg-type-btn" data-type="command" onclick="setMsgType(this,'command')">&#x1F4BB; Command</button>
+      <button class="msg-type-btn" data-type="task" onclick="setMsgType(this,'task')">&#x26A1; Task</button>
+    </div>
+    <div class="send-msg-row">
+      <div class="input-wrap">
+        <input type="text" class="input-field" id="msg-input" placeholder="Type your message to Windows..." />
+      </div>
+      <button class="btn primary" onclick="sendMessage()">Send &#x2192;</button>
+    </div>
+  </div>
+
+  <div class="section-label">Message History</div>
+  <div class="messages-grid">
+    <div class="msg-panel">
+      <div class="panel-header">
+        <div class="panel-title">&#x1F34E; Mac &#x2192; Windows <span class="badge purple" id="mac-count2">0</span></div>
+      </div>
+      <div class="msg-feed" id="feed-mac2"></div>
+    </div>
+    <div class="msg-panel">
+      <div class="panel-header">
+        <div class="panel-title">&#x1FA9F; Windows &#x2192; Mac <span class="badge cyan" id="win-count2">0</span></div>
+      </div>
+      <div class="msg-feed" id="feed-win2"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============== TAB: TASKS ============== -->
+<div class="tab-page" id="page-tasks">
+  <div class="section-label">Create Task</div>
+  <div class="send-msg-panel" style="margin-bottom:20px">
+    <div style="display:grid;grid-template-columns:2fr 2fr 1fr auto;gap:10px;align-items:flex-end">
+      <div><label class="form-label">Label</label><input type="text" class="input-field" id="task-label" placeholder="Task name..." /></div>
+      <div><label class="form-label">Command</label><input type="text" class="input-field" id="task-cmd" placeholder="Command to run..." /></div>
+      <div><label class="form-label">Priority</label>
+        <select class="input-field" id="task-priority"><option value="normal">Normal</option><option value="high">High</option><option value="low">Low</option></select>
+      </div>
+      <button class="btn primary" onclick="createTask()" style="height:40px">Create</button>
+    </div>
+  </div>
+
+  <div class="section-label">Task Queue</div>
+  <div class="tasks-section">
+    <div class="panel-header">
+      <div class="panel-title">&#x26A1; Recent Tasks <span class="badge purple" id="task-count">0</span></div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <select class="input-field" style="width:auto;padding:4px 10px;font-size:.7rem" id="task-filter" onchange="filterTasks()">
+          <option value="all">All</option><option value="pending">Pending</option><option value="running">Running</option><option value="done">Done</option><option value="error">Error</option>
+        </select>
+        <div class="refresh-tag"><div class="refresh-spinner" id="spin-tasks"></div>Auto 5s</div>
+      </div>
+    </div>
+    <div style="overflow-x:auto">
+      <table>
+        <thead><tr><th>#</th><th>Label / Command</th><th>Status</th><th>Priority</th><th>Result</th><th>Duration</th><th>Created</th><th>Actions</th></tr></thead>
+        <tbody id="tasks-body"><tr><td colspan="8"><div class="empty-state"><div class="icon">&#x1F4CB;</div><p>Loading tasks...</p></div></td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ============== TAB: PHOTOSHOP ============== -->
+<div class="tab-page" id="page-photoshop">
+  <div class="section-label">Photoshop Controls</div>
+  <div class="ps-grid">
+    <div>
+      <div class="stat-card" style="margin-bottom:14px">
+        <div class="stat-header"><div class="stat-label">Photoshop Status</div><div class="stat-icon cyan">&#x1F3A8;</div></div>
+        <div class="stat-value" id="ps-status-val" style="color:var(--text-muted)">Checking...</div>
+        <div class="stat-meta"><span class="dot yellow" id="ps-status-dot"></span><span id="ps-status-meta">Detecting...</span></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-header"><div class="stat-label">Current PSD</div><div class="stat-icon purple">&#x1F4C4;</div></div>
+        <div class="info-value mono" style="font-size:.7rem">C:\Users\Victor\Documents\lilika\Arte_Feed.psd</div>
+      </div>
+    </div>
+    <div>
+      <div class="ps-action-grid">
+        <div class="ps-action-btn" onclick="psAction('open-psd')"><div class="ps-icon">&#x1F4C2;</div><div class="ps-label">Open PSD</div><div class="ps-desc">Open template file</div></div>
+        <div class="ps-action-btn" onclick="psAction('export-png')"><div class="ps-icon">&#x1F4E4;</div><div class="ps-label">Export PNG</div><div class="ps-desc">Export current file</div></div>
+        <div class="ps-action-btn" onclick="psAction('run-script')"><div class="ps-icon">&#x25B6;&#xFE0F;</div><div class="ps-label">Run Script</div><div class="ps-desc">Execute JSX below</div></div>
+        <div class="ps-action-btn" onclick="psAction('list-layers')"><div class="ps-icon">&#x1F4DA;</div><div class="ps-label">List Layers</div><div class="ps-desc">Show all layers</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-label">Script Editor</div>
+  <div class="script-editor">
+    <div class="panel-header"><div class="panel-title">&#x1F4DD; JSX Script</div><button class="btn sm primary" onclick="psAction('run-script')">&#x25B6; Run Script</button></div>
+    <textarea id="ps-script" placeholder="// Write your Photoshop JSX script here...
+// Example:
+var doc = app.activeDocument;
+alert('Document: ' + doc.name);
+alert('Layers: ' + doc.layers.length);">// Photoshop JSX Script
+var doc = app.activeDocument;
+var layers = doc.layers;
+for (var i = 0; i &lt; layers.length; i++) {
+    $.writeln(layers[i].name);
+}</textarea>
+  </div>
+</div>
+
+<!-- ============== TAB: CLIENTS ============== -->
+<div class="tab-page" id="page-clients">
+  <div class="section-label">CRM / Projects</div>
+  <div style="display:flex;justify-content:flex-end;margin-bottom:14px">
+    <button class="btn primary" onclick="openClientModal()">+ Add Client</button>
+  </div>
+  <div class="crm-card">
+    <div style="overflow-x:auto">
+      <table>
+        <thead><tr><th>Client</th><th>Type</th><th>Status</th><th>URL</th><th>Notes</th><th>Actions</th></tr></thead>
+        <tbody id="clients-body"><tr><td colspan="6"><div class="empty-state"><div class="icon">&#x1F465;</div><p>Loading clients...</p></div></td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ============== TAB: MONITOR ============== -->
+<div class="tab-page" id="page-monitor">
+  <div class="section-label">System Resources</div>
+  <div class="monitor-grid">
+    <div class="monitor-card">
+      <div class="monitor-label">CPU Usage</div>
+      <div class="monitor-value" id="mon-cpu" style="color:var(--cyan)">---%</div>
+      <div class="monitor-bar"><div class="monitor-bar-fill" id="mon-cpu-bar" style="width:0%;background:var(--cyan)"></div></div>
+    </div>
+    <div class="monitor-card">
+      <div class="monitor-label">Memory (RAM)</div>
+      <div class="monitor-value" id="mon-ram" style="color:var(--purple)">---%</div>
+      <div class="monitor-bar"><div class="monitor-bar-fill" id="mon-ram-bar" style="width:0%;background:var(--purple)"></div></div>
+    </div>
+    <div class="monitor-card">
+      <div class="monitor-label">Disk Usage</div>
+      <div class="monitor-value" id="mon-disk" style="color:var(--yellow)">---%</div>
+      <div class="monitor-bar"><div class="monitor-bar-fill" id="mon-disk-bar" style="width:0%;background:var(--yellow)"></div></div>
+    </div>
+  </div>
+
+  <div class="section-label">Network Status</div>
+  <div class="sysinfo-grid" style="margin-bottom:20px">
+    <div class="info-card">
+      <div class="info-card-title">&#x1F310; Bridge Status</div>
+      <div class="info-value" id="mon-bridge" style="color:var(--green)">Active</div>
+      <div class="info-sub">PhantomBridge relay</div>
+    </div>
+    <div class="info-card">
+      <div class="info-card-title">&#x2601;&#xFE0F; Tunnel</div>
+      <div class="info-value" id="mon-tunnel-status">Checking...</div>
+      <div class="info-sub">Cloudflare tunnel</div>
+    </div>
+    <div class="info-card">
+      <div class="info-card-title">&#x1FA9F; Windows</div>
+      <div class="info-value" id="mon-win-status">Checking...</div>
+      <div class="info-sub">Remote server status</div>
+    </div>
+  </div>
+
+  <div class="section-label">Uptime History (last 24 checks)</div>
+  <div class="card" style="padding:20px">
+    <div class="uptime-chart" id="uptime-chart"></div>
+    <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:.6rem;color:var(--text-muted)">
+      <span>24 checks ago</span><span>Now</span>
+    </div>
+  </div>
+</div>
+
+<!-- ============== TAB: SETTINGS ============== -->
+<div class="tab-page" id="page-settings">
+  <div class="section-label">Configuration</div>
+  <div class="settings-grid">
+    <div class="setting-card">
+      <div class="setting-title">&#x1F310; Connection</div>
+      <div class="setting-row"><span class="setting-key">Bridge URL</span><span class="setting-val" id="set-bridge-url">---</span></div>
+      <div class="setting-row"><span class="setting-key">Windows IP</span><span class="setting-val">192.168.48.133:4000</span></div>
+      <div class="setting-row"><span class="setting-key">Tunnel</span><span class="setting-val" id="set-tunnel">---</span></div>
+      <div class="setting-row"><span class="setting-key">Status</span><span class="setting-val" id="set-status" style="color:var(--text-muted)">---</span></div>
+    </div>
+    <div class="setting-card">
+      <div class="setting-title">&#x1F512; Security</div>
+      <div class="setting-row"><span class="setting-key">Deploy Token</span><span class="setting-val">tilika-secret-2025</span></div>
+      <div class="setting-row"><span class="setting-key">Bridge Token</span><span class="setting-val">phantom-secret-2025</span></div>
+      <div class="setting-row"><span class="setting-key">Auth</span><span class="setting-val" style="color:var(--green)">Logged in</span></div>
+    </div>
+    <div class="setting-card">
+      <div class="setting-title">&#x23F1;&#xFE0F; Refresh Intervals</div>
+      <div class="setting-row"><span class="setting-key">Fast Refresh</span><span class="setting-val">5s</span></div>
+      <div class="setting-row"><span class="setting-key">Full Refresh</span><span class="setting-val">30s</span></div>
+      <div class="setting-row"><span class="setting-key">Tunnel Check</span><span class="setting-val">60s</span></div>
+    </div>
+    <div class="setting-card">
+      <div class="setting-title">&#x1F4C4; Photoshop</div>
+      <div class="setting-row"><span class="setting-key">PSD Path</span><span class="setting-val" style="font-size:.6rem">C:\...\Arte_Feed.psd</span></div>
+      <div class="setting-row"><span class="setting-key">Repo</span><span class="setting-val" style="font-size:.6rem">tilika-ps-server</span></div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /main-content -->
+
+<!-- CLIENT MODAL -->
+<div class="modal-overlay" id="client-modal">
+  <div class="modal">
+    <div class="modal-title"><span id="modal-client-title">Add Client</span><button class="modal-close" onclick="closeClientModal()">&times;</button></div>
+    <input type="hidden" id="client-edit-id" />
+    <div class="form-group"><label class="form-label">Client Name</label><input type="text" class="input-field" id="client-name" placeholder="e.g. Diamond Formaturas" /></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Type</label><input type="text" class="input-field" id="client-type" placeholder="Website, Landing Page..." /></div>
+      <div class="form-group"><label class="form-label">Status</label>
+        <select class="input-field" id="client-status"><option value="active">Active</option><option value="in-progress">In Progress</option><option value="paused">Paused</option><option value="completed">Completed</option></select>
+      </div>
+    </div>
+    <div class="form-group"><label class="form-label">URL</label><input type="text" class="input-field" id="client-url" placeholder="https://..." /></div>
+    <div class="form-group"><label class="form-label">Notes</label><textarea class="input-field" id="client-notes" placeholder="Project notes..."></textarea></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px">
+      <button class="btn" onclick="closeClientModal()">Cancel</button>
+      <button class="btn primary" onclick="saveClient()">Save Client</button>
+    </div>
+  </div>
+</div>
+
+<!-- QUICK ACTIONS -->
+<div class="quick-actions">
+  <button class="qa-toggle" id="qa-toggle" onclick="toggleQuickActions()">&#x26A1;</button>
+  <div class="qa-menu" id="qa-menu">
+    <button class="qa-btn" onclick="qaAction('health')"><span class="qa-icon">&#x1F3E5;</span> Check Health</button>
+    <button class="qa-btn" onclick="qaAction('tunnel')"><span class="qa-icon">&#x1F504;</span> Refresh Tunnel</button>
+    <button class="qa-btn" onclick="qaAction('clear')"><span class="qa-icon">&#x1F9F9;</span> Clear Messages</button>
+    <button class="qa-btn" onclick="qaAction('sync')"><span class="qa-icon">&#x1F504;</span> Full Sync</button>
+  </div>
+</div>
+
+<!-- TOAST -->
 <div id="toast">Copied!</div>
 
 <script>
-  /* ───────────────────────────────────────────────────────────
-     State
-  ─────────────────────────────────────────────────────────── */
-  const state = {
-    tunnelUrl: null,
-    sessionStart: Date.now(),
-    macMessages: [],
-    winMessages: [],
-    tasks: [],
-    isOnline: false,
-  };
+/* ═══════════════════════════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════════════════════════ */
+const state = {
+  tunnelUrl: null,
+  sessionStart: Date.now(),
+  macMessages: [],
+  winMessages: [],
+  tasks: [],
+  clients: [],
+  isOnline: false,
+  currentTab: 'dashboard',
+  msgType: 'message',
+  termHistory: [],
+  termHistIdx: -1,
+  filePath: 'C:\\',
+  uptimeLog: [],
+  sidebarCollapsed: false,
+};
 
-  /* ───────────────────────────────────────────────────────────
-     Clock
-  ─────────────────────────────────────────────────────────── */
-  function updateClock() {
-    const now = new Date();
-    const d = now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-    const t = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
-    document.getElementById('clock').innerHTML = `${d}<span>·</span>${t}`;
+/* ═══════════════════════════════════════════════════════════════
+   LOGIN
+═══════════════════════════════════════════════════════════════ */
+function checkAuth() {
+  return localStorage.getItem('phantom-auth') === 'true';
+}
+function doLogin() {
+  const pass = document.getElementById('login-pass').value;
+  if (pass === 'phantom-2025') {
+    localStorage.setItem('phantom-auth', 'true');
+    document.getElementById('login-overlay').classList.add('hidden');
+    initApp();
+  } else {
+    document.getElementById('login-error').textContent = 'Invalid password. Try again.';
+    document.getElementById('login-pass').value = '';
   }
-  setInterval(updateClock, 1000);
-  updateClock();
+}
+function doLogout() {
+  localStorage.removeItem('phantom-auth');
+  location.reload();
+}
+document.getElementById('login-pass').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+if (checkAuth()) {
+  document.getElementById('login-overlay').classList.add('hidden');
+}
 
-  /* ───────────────────────────────────────────────────────────
-     Session Uptime
-  ─────────────────────────────────────────────────────────── */
-  function updateUptime() {
-    const s = Math.floor((Date.now() - state.sessionStart) / 1000);
-    const h = Math.floor(s / 3600);
-    const m = Math.floor((s % 3600) / 60);
-    const sec = s % 60;
-    let str = '';
-    if (h) str += `${h}h `;
-    str += `${String(m).padStart(2,'0')}m ${String(sec).padStart(2,'0')}s`;
-    document.getElementById('si-uptime').textContent = str;
+/* ═══════════════════════════════════════════════════════════════
+   SIDEBAR & TABS
+═══════════════════════════════════════════════════════════════ */
+function toggleSidebar() {
+  const sb = document.getElementById('sidebar');
+  if (window.innerWidth <= 768) {
+    sb.classList.toggle('mobile-open');
+  } else {
+    sb.classList.toggle('collapsed');
+    state.sidebarCollapsed = sb.classList.contains('collapsed');
   }
-  setInterval(updateUptime, 1000);
+}
+function switchTab(tab) {
+  state.currentTab = tab;
+  document.querySelectorAll('.tab-page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + tab)?.classList.add('active');
+  document.querySelector(`.nav-item[data-tab="${tab}"]`)?.classList.add('active');
+  if (window.innerWidth <= 768) document.getElementById('sidebar').classList.remove('mobile-open');
+  if (tab === 'files') fetchFiles();
+  if (tab === 'clients') fetchClients();
+  if (tab === 'monitor') updateMonitor();
+  if (tab === 'settings') updateSettings();
+}
 
-  /* ───────────────────────────────────────────────────────────
-     Helpers
-  ─────────────────────────────────────────────────────────── */
-  function formatTs(ts) {
-    if (!ts) return '—';
-    const d = new Date(ts);
-    if (isNaN(d)) return ts;
-    return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
-  }
+/* ═══════════════════════════════════════════════════════════════
+   CLOCK & UPTIME
+═══════════════════════════════════════════════════════════════ */
+function updateClock() {
+  const now = new Date();
+  const d = now.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+  const t = now.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
+  document.getElementById('clock').innerHTML = d+'<span>&middot;</span>'+t;
+}
+setInterval(updateClock,1000); updateClock();
 
-  function formatRelative(ts) {
-    if (!ts) return '—';
-    const d = new Date(ts);
-    if (isNaN(d)) return ts;
-    const diff = Math.round((Date.now() - d) / 1000);
-    if (diff < 5)  return 'just now';
-    if (diff < 60) return `${diff}s ago`;
-    if (diff < 3600) return `${Math.floor(diff/60)}m ago`;
-    return `${Math.floor(diff/3600)}h ago`;
-  }
+function updateUptime() {
+  const s = Math.floor((Date.now()-state.sessionStart)/1000);
+  const h = Math.floor(s/3600), m = Math.floor((s%3600)/60), sec = s%60;
+  let str = ''; if (h) str += h+'h ';
+  str += String(m).padStart(2,'0')+'m '+String(sec).padStart(2,'0')+'s';
+  const el = document.getElementById('si-uptime'); if (el) el.textContent = str;
+}
+setInterval(updateUptime,1000);
 
-  function calcDuration(created, finished) {
-    if (!created || !finished) return '—';
-    const ms = new Date(finished) - new Date(created);
-    if (isNaN(ms) || ms < 0) return '—';
-    if (ms < 1000) return `${ms}ms`;
-    return `${(ms/1000).toFixed(1)}s`;
-  }
+/* ═══════════════════════════════════════════════════════════════
+   HELPERS
+═══════════════════════════════════════════════════════════════ */
+function formatTs(ts) { if (!ts) return '\u2014'; const d=new Date(ts); if (isNaN(d)) return ts; return d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}); }
+function formatRelative(ts) { if (!ts) return '\u2014'; const d=new Date(ts); if (isNaN(d)) return ts; const diff=Math.round((Date.now()-d)/1000); if (diff<5) return 'just now'; if (diff<60) return diff+'s ago'; if (diff<3600) return Math.floor(diff/60)+'m ago'; return Math.floor(diff/3600)+'h ago'; }
+function calcDuration(c,f) { if (!c||!f) return '\u2014'; const ms=new Date(f)-new Date(c); if (isNaN(ms)||ms<0) return '\u2014'; if (ms<1000) return ms+'ms'; return (ms/1000).toFixed(1)+'s'; }
+function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
-  function showToast(msg = 'Copied!') {
-    const t = document.getElementById('toast');
-    t.textContent = msg;
-    t.classList.add('show');
-    setTimeout(() => t.classList.remove('show'), 2200);
-  }
+function showToast(msg,color) {
+  const t=document.getElementById('toast'); t.textContent=msg; t.style.color=color||'var(--green)';
+  t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2500);
+}
+function copyTunnel() {
+  if (!state.tunnelUrl) return;
+  navigator.clipboard.writeText(state.tunnelUrl).then(()=>{
+    const btn=document.getElementById('copy-tunnel-btn'); btn.classList.add('copied'); btn.textContent='\u2713';
+    showToast('Tunnel URL copied!'); setTimeout(()=>{btn.classList.remove('copied');btn.textContent='\u2398';},2000);
+  });
+}
+function startSpin(id) { document.getElementById(id)?.classList.add('spinning'); }
+function stopSpin(id) { document.getElementById(id)?.classList.remove('spinning'); }
 
-  function copyTunnel() {
-    if (!state.tunnelUrl) return;
-    navigator.clipboard.writeText(state.tunnelUrl).then(() => {
-      const btn = document.getElementById('copy-tunnel-btn');
-      btn.classList.add('copied');
-      btn.textContent = '✓';
-      showToast('Tunnel URL copied!');
-      setTimeout(() => { btn.classList.remove('copied'); btn.textContent = '⎘'; }, 2000);
-    });
-  }
-  // expose globally
-  window.copyTunnel = copyTunnel;
+function setOnline(online) {
+  state.isOnline=online;
+  const badge=document.getElementById('conn-badge'),text=document.getElementById('conn-text');
+  if (online) { badge.classList.remove('offline'); text.textContent='Connected'; }
+  else { badge.classList.add('offline'); text.textContent='Offline'; }
+}
 
-  /* ───────────────────────────────────────────────────────────
-     Spinner helpers
-  ─────────────────────────────────────────────────────────── */
-  function startSpin(id) {
-    document.getElementById(id)?.classList.add('spinning');
-  }
-  function stopSpin(id) {
-    document.getElementById(id)?.classList.remove('spinning');
-  }
+/* ═══════════════════════════════════════════════════════════════
+   API CALLS
+═══════════════════════════════════════════════════════════════ */
+async function fetchStatus() {
+  try {
+    const r=await fetch('/status'); if (!r.ok) throw 0; const d=await r.json(); setOnline(true);
+    const el=document.getElementById('si-lastseen');
+    if (d.lastSeen) { el.textContent=formatRelative(d.lastSeen); el.title=new Date(d.lastSeen).toLocaleString(); }
+    else el.textContent='Never';
+  } catch(e) {}
+}
 
-  /* ───────────────────────────────────────────────────────────
-     Connection badge
-  ─────────────────────────────────────────────────────────── */
-  function setOnline(online) {
-    state.isOnline = online;
-    const badge = document.getElementById('conn-badge');
-    const text  = document.getElementById('conn-text');
-    if (online) {
-      badge.classList.remove('offline');
-      text.textContent = 'Connected';
-    } else {
-      badge.classList.add('offline');
-      text.textContent = 'Offline';
-    }
+async function fetchHealth() {
+  const wEl=document.getElementById('s-windows'),wMeta=document.getElementById('s-windows-meta'),wDot=document.getElementById('s-windows-dot');
+  const psEl=document.getElementById('s-photoshop'),psMeta=document.getElementById('s-ps-meta'),psDot=document.getElementById('s-ps-dot');
+  try {
+    const r=await fetch('/health',{signal:AbortSignal.timeout(5000)}); if (!r.ok) throw 0; const d=await r.json();
+    setOnline(true);
+    wEl.textContent='ONLINE'; wEl.className='stat-value online'; wMeta.textContent='Windows server reachable'; wDot.className='dot green';
+    const psActive=d.psd===true||d.psd==='true'||d.psd===1;
+    psEl.textContent=psActive?'ACTIVE':'INACTIVE'; psEl.className=psActive?'stat-value active':'stat-value inactive';
+    psMeta.textContent=psActive?'Photoshop running':'Not detected'; psDot.className=psActive?'dot cyan':'dot yellow';
+    // PS tab
+    const psv=document.getElementById('ps-status-val'),psd=document.getElementById('ps-status-dot'),psm=document.getElementById('ps-status-meta');
+    if (psv) { psv.textContent=psActive?'ACTIVE':'INACTIVE'; psv.style.color=psActive?'var(--cyan)':'var(--text-muted)'; psd.className=psActive?'dot cyan':'dot yellow'; psm.textContent=psActive?'Connected':'Not detected'; }
+    state.uptimeLog.push(1); if (state.uptimeLog.length>24) state.uptimeLog.shift();
+  } catch(e) {
+    setOnline(false);
+    wEl.textContent='OFFLINE'; wEl.className='stat-value offline'; wMeta.textContent='Cannot reach Windows'; wDot.className='dot red';
+    psEl.textContent='\u2014'; psEl.className='stat-value inactive'; psMeta.textContent='Windows unreachable'; psDot.className='dot red';
+    state.uptimeLog.push(0); if (state.uptimeLog.length>24) state.uptimeLog.shift();
   }
+}
 
-  /* ───────────────────────────────────────────────────────────
-     API: /status (PhantomBridge own)
-  ─────────────────────────────────────────────────────────── */
-  async function fetchStatus() {
+async function fetchTunnel() {
+  const el=document.getElementById('s-tunnel'),meta=document.getElementById('s-tunnel-meta'),dot=document.getElementById('s-tunnel-dot');
+  const siWrap=document.getElementById('si-tunnel-wrap');
+  try {
+    const r=await fetch('/tunnel-url',{signal:AbortSignal.timeout(5000)}); if (!r.ok) throw 0; const d=await r.json();
+    if (d.url) {
+      state.tunnelUrl=d.url;
+      const short=d.url.replace(/^https?:\/\//,'').substring(0,26)+(d.url.length>38?'...':'');
+      el.textContent=short; meta.textContent='Tunnel active'; dot.className='dot green';
+      siWrap.innerHTML='<a class="tunnel-link" href="'+d.url+'" target="_blank">&#x1F517; '+escHtml(d.url)+' &#x2197;</a>';
+    } else throw 0;
+  } catch(e) {
+    el.textContent='Not available'; meta.textContent='Tunnel offline'; dot.className='dot red';
+    siWrap.innerHTML='<div class="info-value mono">No tunnel configured</div>';
+  }
+}
+
+/* ─── Messages ─── */
+function renderMessages(msgs,feedId,countId,side) {
+  const feed=document.getElementById(feedId),count=document.getElementById(countId);
+  if (count) count.textContent=msgs.length;
+  if (!msgs||!msgs.length) { feed.innerHTML='<div class="empty-state"><div class="icon">&#x1F4ED;</div><p>No messages yet</p></div>'; return; }
+  const html=msgs.slice().reverse().map(m=>{
+    const text=escHtml(m.message||m.text||JSON.stringify(m));
+    return '<div class="msg-bubble '+side+'"><div class="msg-bubble-inner">'+text+'</div><div class="msg-meta"><span class="msg-from">'+escHtml(m.from||'system')+'</span> &middot; '+formatTs(m.timestamp||m.createdAt)+'</div></div>';
+  }).join('');
+  if (feed.dataset.lastHtml!==html) { feed.innerHTML=html; feed.dataset.lastHtml=html; feed.scrollTop=feed.scrollHeight; }
+}
+
+async function fetchMacMessages() {
+  startSpin('spin-mac');
+  try { const r=await fetch('/messages-mac',{signal:AbortSignal.timeout(5000)}); if (!r.ok) throw 0; const d=await r.json();
+    state.macMessages=d.messages||[]; renderMessages(state.macMessages,'feed-mac','mac-count','mac'); renderMessages(state.macMessages,'feed-mac2','mac-count2','mac');
+  } catch(e) { const f=document.getElementById('feed-mac'); if (!f.querySelector('.msg-bubble')) f.innerHTML='<div class="empty-state"><div class="icon">&#x26A0;&#xFE0F;</div><p>Cannot fetch</p></div>'; }
+  finally { stopSpin('spin-mac'); updateMsgTotal(); }
+}
+async function fetchWinMessages() {
+  startSpin('spin-win');
+  try { const r=await fetch('/messages',{signal:AbortSignal.timeout(5000)}); if (!r.ok) throw 0; const d=await r.json();
+    state.winMessages=d.messages||[]; renderMessages(state.winMessages,'feed-win','win-count','win'); renderMessages(state.winMessages,'feed-win2','win-count2','win');
+  } catch(e) { const f=document.getElementById('feed-win'); if (!f.querySelector('.msg-bubble')) f.innerHTML='<div class="empty-state"><div class="icon">&#x26A0;&#xFE0F;</div><p>Cannot fetch</p></div>'; }
+  finally { stopSpin('spin-win'); updateMsgTotal(); }
+}
+function updateMsgTotal() {
+  const total=state.macMessages.length+state.winMessages.length;
+  document.getElementById('s-msgs').textContent=total;
+  document.getElementById('s-msgs-meta').textContent=state.macMessages.length+' mac \u00b7 '+state.winMessages.length+' win';
+}
+
+/* ─── Tasks ─── */
+async function fetchTasks() {
+  startSpin('spin-tasks');
+  try { const r=await fetch('/tasks',{signal:AbortSignal.timeout(5000)}); if (!r.ok) throw 0; const d=await r.json();
+    state.tasks=d.tasks||[]; renderTasks(state.tasks);
+  } catch(e) { document.getElementById('tasks-body').innerHTML='<tr><td colspan="8"><div class="empty-state"><div class="icon">&#x26A0;&#xFE0F;</div><p>Cannot fetch tasks</p></div></td></tr>'; }
+  finally { stopSpin('spin-tasks'); }
+}
+function renderTasks(tasks) {
+  const filter=document.getElementById('task-filter')?.value||'all';
+  const filtered=filter==='all'?tasks:tasks.filter(t=>(t.status||'pending').toLowerCase()===filter);
+  const tbody=document.getElementById('tasks-body');
+  document.getElementById('task-count').textContent=tasks.length;
+  if (!filtered.length) { tbody.innerHTML='<tr><td colspan="8"><div class="empty-state"><div class="icon">&#x1F4CB;</div><p>No tasks'+(filter!=='all'?' with status: '+filter:'')+'</p></div></td></tr>'; return; }
+  tbody.innerHTML=filtered.slice().reverse().slice(0,50).map((t,i)=>{
+    const sb=renderStatusBadge(t.status), pr=t.priority||'normal';
+    const prBadge='<span class="badge '+(pr==='high'?'red':pr==='low'?'yellow':'purple')+'">'+pr+'</span>';
+    const result=t.result?escHtml(String(t.result).substring(0,80)):'<span style="color:var(--text-muted)">\u2014</span>';
+    return '<tr><td style="color:var(--text-muted)">'+(i+1)+'</td><td><div class="task-label">'+escHtml(t.label||t.id||'\u2014')+'</div><div class="task-cmd">'+escHtml(t.cmd||'')+'</div></td><td>'+sb+'</td><td>'+prBadge+'</td><td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.72rem;color:var(--text-dim)">'+result+'</td><td style="color:var(--text-dim);font-variant-numeric:tabular-nums">'+calcDuration(t.createdAt,t.finishedAt)+'</td><td style="color:var(--text-muted);font-variant-numeric:tabular-nums">'+formatTs(t.createdAt)+'</td><td><button class="btn sm danger" onclick="showToast(\'Task action sent\')">&#x2716;</button></td></tr>';
+  }).join('');
+}
+function filterTasks() { renderTasks(state.tasks); }
+function renderStatusBadge(status) {
+  const s=(status||'pending').toLowerCase();
+  const map={pending:{l:'Pending',c:'pending'},running:{l:'Running',c:'running'},done:{l:'Done',c:'done'},success:{l:'Done',c:'done'},error:{l:'Error',c:'error'},failed:{l:'Failed',c:'error'}};
+  const info=map[s]||{l:s,c:'pending'};
+  return '<span class="status-badge '+info.c+'"><span class="status-badge-dot"></span>'+info.l+'</span>';
+}
+
+async function createTask() {
+  const label=document.getElementById('task-label').value.trim(), cmd=document.getElementById('task-cmd').value.trim(), priority=document.getElementById('task-priority').value;
+  if (!label) { showToast('Label is required','var(--red)'); return; }
+  try {
+    const r=await fetch('/api/task/create',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({label,command:cmd,priority})});
+    const d=await r.json();
+    if (d.ok) { showToast('Task created!'); document.getElementById('task-label').value=''; document.getElementById('task-cmd').value=''; fetchTasks(); }
+    else showToast('Error: '+(d.error||'Unknown'),'var(--red)');
+  } catch(e) { showToast('Failed to create task','var(--red)'); }
+}
+
+/* ─── Send Message ─── */
+function setMsgType(el,type) {
+  state.msgType=type;
+  document.querySelectorAll('.msg-type-btn').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+}
+async function sendMessage() {
+  const input=document.getElementById('msg-input'), text=input.value.trim();
+  if (!text) return;
+  try {
+    const r=await fetch('/api/command',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({command:text,type:state.msgType})});
+    const d=await r.json();
+    if (d.ok) { showToast('Message sent!'); input.value=''; fetchMacMessages(); fetchWinMessages(); }
+    else showToast('Error sending','var(--red)');
+  } catch(e) { showToast('Send failed','var(--red)'); }
+}
+document.getElementById('msg-input')?.addEventListener('keydown',e=>{ if (e.key==='Enter') sendMessage(); });
+
+/* ─── Terminal ─── */
+const termInput=document.getElementById('term-input');
+termInput?.addEventListener('keydown',e=>{
+  if (e.key==='Enter') { termSend(); }
+  else if (e.key==='ArrowUp') { e.preventDefault(); if (state.termHistIdx<state.termHistory.length-1) { state.termHistIdx++; termInput.value=state.termHistory[state.termHistIdx]; } }
+  else if (e.key==='ArrowDown') { e.preventDefault(); if (state.termHistIdx>0) { state.termHistIdx--; termInput.value=state.termHistory[state.termHistIdx]; } else { state.termHistIdx=-1; termInput.value=''; } }
+});
+async function termSend() {
+  const cmd=termInput.value.trim(); if (!cmd) return;
+  state.termHistory.unshift(cmd); state.termHistIdx=-1; termInput.value='';
+  const output=document.getElementById('term-output');
+  output.innerHTML+='<div><span class="cmd-prompt">phantom $ </span><span class="cmd-line">'+escHtml(cmd)+'</span></div>';
+  if (cmd==='help') {
+    output.innerHTML+='<div class="cmd-info">Available: help, clear, status, health, tunnel, tasks, messages</div>';
+    output.innerHTML+='<div class="cmd-info">Any other text is sent as a command to Windows</div>';
+  } else if (cmd==='clear') { clearTerminal(); return; }
+  else if (cmd==='status'||cmd==='health'||cmd==='tunnel') {
+    try { const r=await fetch('/'+cmd,{signal:AbortSignal.timeout(5000)}); const d=await r.json(); output.innerHTML+='<div class="cmd-response">'+escHtml(JSON.stringify(d,null,2))+'</div>'; }
+    catch(e) { output.innerHTML+='<div class="cmd-error">Error fetching /'+cmd+'</div>'; }
+  } else {
+    output.innerHTML+='<div class="cmd-info">Sending to Windows...</div>';
     try {
-      const r = await fetch('/status');
-      if (!r.ok) throw new Error();
-      const d = await r.json();
-      setOnline(true);
-
-      const lastSeenEl = document.getElementById('si-lastseen');
-      if (d.lastSeen) {
-        lastSeenEl.textContent = formatRelative(d.lastSeen);
-        lastSeenEl.title = new Date(d.lastSeen).toLocaleString();
-      } else {
-        lastSeenEl.textContent = 'Never';
-      }
-    } catch (e) {
-      // will try health as fallback
-    }
+      const r=await fetch('/api/command',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({command:cmd,type:'command'})});
+      const d=await r.json();
+      if (d.ok) { output.innerHTML+='<div class="cmd-response">'+escHtml(JSON.stringify(d.entry?.response||'Sent',null,2))+'</div>'; }
+      else output.innerHTML+='<div class="cmd-error">Error: '+(d.error||'Unknown')+'</div>';
+    } catch(e) { output.innerHTML+='<div class="cmd-error">Failed to send command</div>'; }
   }
+  output.scrollTop=output.scrollHeight;
+}
+function clearTerminal() {
+  document.getElementById('term-output').innerHTML='<div class="cmd-info">Terminal cleared.</div><div>&nbsp;</div>';
+}
 
-  /* ───────────────────────────────────────────────────────────
-     API: /health (Windows server)
-  ─────────────────────────────────────────────────────────── */
-  async function fetchHealth() {
-    const wEl   = document.getElementById('s-windows');
-    const wMeta = document.getElementById('s-windows-meta');
-    const wDot  = document.getElementById('s-windows-dot');
-    const psEl  = document.getElementById('s-photoshop');
-    const psMeta= document.getElementById('s-ps-meta');
-    const psDot = document.getElementById('s-ps-dot');
-
-    try {
-      const r = await fetch('/health', { signal: AbortSignal.timeout(5000) });
-      if (!r.ok) throw new Error('HTTP ' + r.status);
-      const d = await r.json();
-
-      setOnline(true);
-
-      wEl.textContent  = 'ONLINE';
-      wEl.className    = 'stat-value online';
-      wMeta.textContent= 'Windows server reachable';
-      wDot.className   = 'dot green';
-
-      const psActive = d.psd === true || d.psd === 'true' || d.psd === 1;
-      psEl.textContent  = psActive ? 'ACTIVE' : 'INACTIVE';
-      psEl.className    = psActive ? 'stat-value active' : 'stat-value inactive';
-      psMeta.textContent= psActive ? 'Photoshop running' : 'Not detected';
-      psDot.className   = psActive ? 'dot cyan' : 'dot yellow';
-
-    } catch (e) {
-      setOnline(false);
-      wEl.textContent  = 'OFFLINE';
-      wEl.className    = 'stat-value offline';
-      wMeta.textContent= 'Cannot reach Windows';
-      wDot.className   = 'dot red';
-
-      psEl.textContent  = '—';
-      psEl.className    = 'stat-value inactive';
-      psMeta.textContent= 'Windows unreachable';
-      psDot.className   = 'dot red';
-    }
-  }
-
-  /* ───────────────────────────────────────────────────────────
-     API: /tunnel-url
-  ─────────────────────────────────────────────────────────── */
-  async function fetchTunnel() {
-    const el     = document.getElementById('s-tunnel');
-    const meta   = document.getElementById('s-tunnel-meta');
-    const dot    = document.getElementById('s-tunnel-dot');
-    const siEl   = document.getElementById('si-tunnel');
-    const siWrap = document.getElementById('si-tunnel-wrap');
-
-    try {
-      const r = await fetch('/tunnel-url', { signal: AbortSignal.timeout(5000) });
-      if (!r.ok) throw new Error();
-      const d = await r.json();
-
-      if (d.url) {
-        state.tunnelUrl = d.url;
-        const short = d.url.replace(/^https?:\/\//, '').substring(0, 28) + (d.url.length > 40 ? '…' : '');
-        el.textContent    = short;
-        meta.textContent  = 'Tunnel active';
-        dot.className     = 'dot green';
-        siEl.textContent  = d.url;
-        siWrap.innerHTML  = `<a class="tunnel-link" href="${d.url}" target="_blank" rel="noopener">🔗 ${d.url} ↗</a>`;
-      } else {
-        throw new Error('no url');
-      }
-    } catch (e) {
-      el.textContent   = 'Not available';
-      meta.textContent = 'Tunnel offline';
-      dot.className    = 'dot red';
-      siEl.textContent = 'No tunnel configured';
-    }
-  }
-
-  /* ───────────────────────────────────────────────────────────
-     Render messages
-  ─────────────────────────────────────────────────────────── */
-  function renderMessages(msgs, feedId, countId, side) {
-    const feed  = document.getElementById(feedId);
-    const count = document.getElementById(countId);
-    count.textContent = msgs.length;
-
-    if (!msgs || msgs.length === 0) {
-      feed.innerHTML = `<div class="empty-state"><div class="icon">📭</div><p>No messages yet</p></div>`;
-      return;
-    }
-
-    // Only re-render if count changed to avoid flicker
-    const html = msgs.slice().reverse().map(m => {
-      const text = escHtml(m.message || m.text || JSON.stringify(m));
-      return `
-        <div class="msg-bubble ${side}">
-          <div class="msg-bubble-inner">${text}</div>
-          <div class="msg-meta">
-            <span class="msg-from">${escHtml(m.from || 'system')}</span>
-            · ${formatTs(m.timestamp || m.createdAt)}
-          </div>
-        </div>`;
+/* ─── Files ─── */
+async function fetchFiles() {
+  try {
+    const r=await fetch('/api/files?path='+encodeURIComponent(state.filePath)); const d=await r.json();
+    const list=document.getElementById('file-list');
+    if (!d.files||!d.files.length) { list.innerHTML='<div class="empty-state"><div class="icon">&#x1F4C2;</div><p>Empty directory</p></div>'; return; }
+    list.innerHTML=d.files.map(f=>{
+      const icon=f.type==='folder'?'&#x1F4C1;':'&#x1F4C4;';
+      return '<div class="file-item" onclick="'+(f.type==='folder'?'navigatePath(\''+escHtml(state.filePath+f.name+'\\\\\')+'\')':"showToast('File: "+escHtml(f.name)+"')")+'"><div class="file-icon">'+icon+'</div><div class="file-name">'+escHtml(f.name)+'</div><div class="file-size">'+(f.size||'--')+'</div><div class="file-date">'+formatTs(f.modified)+'</div></div>';
     }).join('');
+    updateBreadcrumb();
+  } catch(e) { document.getElementById('file-list').innerHTML='<div class="empty-state"><div class="icon">&#x26A0;&#xFE0F;</div><p>Cannot load files</p></div>'; }
+}
+function navigatePath(p) { state.filePath=p; fetchFiles(); }
+function updateBreadcrumb() {
+  const parts=state.filePath.replace(/\\\\/g,'/').split('/').filter(Boolean);
+  let html='<span onclick="navigatePath(\'C:\\\\\')">C:</span>';
+  let path='C:\\';
+  parts.forEach((p,i)=>{ if (i===0&&p==='C:') return; path+=p+'\\'; html+='<span class="sep">&#x25B8;</span><span onclick="navigatePath(\''+escHtml(path)+'\')">'+escHtml(p)+'</span>'; });
+  document.getElementById('file-breadcrumb').innerHTML=html;
+}
 
-    if (feed.dataset.lastHtml !== html) {
-      feed.innerHTML = html;
-      feed.dataset.lastHtml = html;
-      // Scroll to bottom
-      feed.scrollTop = feed.scrollHeight;
-    }
+/* ─── Photoshop ─── */
+async function psAction(action) {
+  const script=document.getElementById('ps-script')?.value||'';
+  showToast('Sending: '+action+'...');
+  try {
+    const payload={command:action==='run-script'?'ps-script:'+script:action, type:'photoshop'};
+    const r=await fetch('/api/command',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const d=await r.json();
+    showToast(d.ok?'PS command sent!':'Error','var(--'+(d.ok?'green':'red')+')');
+  } catch(e) { showToast('PS action failed','var(--red)'); }
+}
+
+/* ─── Clients / CRM ─── */
+async function fetchClients() {
+  try { const r=await fetch('/api/clients'); const d=await r.json(); state.clients=d.clients||[]; renderClients(); }
+  catch(e) { document.getElementById('clients-body').innerHTML='<tr><td colspan="6"><div class="empty-state"><p>Cannot load clients</p></div></td></tr>'; }
+}
+function renderClients() {
+  const tbody=document.getElementById('clients-body');
+  if (!state.clients.length) { tbody.innerHTML='<tr><td colspan="6"><div class="empty-state"><div class="icon">&#x1F465;</div><p>No clients yet</p></div></td></tr>'; return; }
+  tbody.innerHTML=state.clients.map(c=>{
+    const sb='<span class="crm-status '+(c.status||'active')+'"><span class="status-badge-dot"></span>'+escHtml(c.status||'active')+'</span>';
+    const url=c.url?'<a href="'+escHtml(c.url)+'" target="_blank" style="color:var(--cyan);font-size:.72rem">'+escHtml(c.url.replace(/^https?:\/\//,'').substring(0,25))+'</a>':'<span style="color:var(--text-muted)">\u2014</span>';
+    return '<tr><td style="font-weight:600">'+escHtml(c.name)+'</td><td><span class="badge purple">'+escHtml(c.type||'\u2014')+'</span></td><td>'+sb+'</td><td>'+url+'</td><td style="font-size:.72rem;color:var(--text-dim);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escHtml(c.notes||'')+'</td><td><button class="btn sm" onclick="editClient(\''+c.id+'\')">&#x270F;&#xFE0F;</button> <button class="btn sm danger" onclick="deleteClient(\''+c.id+'\')">&#x2716;</button></td></tr>';
+  }).join('');
+}
+function openClientModal(c) {
+  document.getElementById('client-modal').classList.add('show');
+  document.getElementById('modal-client-title').textContent=c?'Edit Client':'Add Client';
+  document.getElementById('client-edit-id').value=c?c.id:'';
+  document.getElementById('client-name').value=c?c.name:'';
+  document.getElementById('client-type').value=c?c.type:'';
+  document.getElementById('client-status').value=c?c.status:'active';
+  document.getElementById('client-url').value=c?c.url:'';
+  document.getElementById('client-notes').value=c?c.notes:'';
+}
+function closeClientModal() { document.getElementById('client-modal').classList.remove('show'); }
+function editClient(id) { const c=state.clients.find(x=>x.id===id); if (c) openClientModal(c); }
+async function deleteClient(id) {
+  if (!confirm('Delete this client?')) return;
+  try { await fetch('/api/clients/'+id,{method:'DELETE'}); showToast('Client deleted'); fetchClients(); }
+  catch(e) { showToast('Delete failed','var(--red)'); }
+}
+async function saveClient() {
+  const data={id:document.getElementById('client-edit-id').value||undefined, name:document.getElementById('client-name').value.trim(),
+    type:document.getElementById('client-type').value.trim(), status:document.getElementById('client-status').value,
+    url:document.getElementById('client-url').value.trim(), notes:document.getElementById('client-notes').value.trim()};
+  if (!data.name) { showToast('Name is required','var(--red)'); return; }
+  try { const r=await fetch('/api/clients',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+    const d=await r.json(); if (d.ok) { showToast('Client saved!'); closeClientModal(); fetchClients(); } else showToast('Error','var(--red)');
+  } catch(e) { showToast('Save failed','var(--red)'); }
+}
+
+/* ─── Monitor ─── */
+function updateMonitor() {
+  // Simulated values - will use real data when Windows /health provides it
+  const cpu=state.isOnline?Math.floor(Math.random()*30+15):0;
+  const ram=state.isOnline?Math.floor(Math.random()*20+40):0;
+  const disk=state.isOnline?68:0;
+  document.getElementById('mon-cpu').textContent=cpu+'%';
+  document.getElementById('mon-cpu-bar').style.width=cpu+'%';
+  document.getElementById('mon-cpu-bar').style.background=cpu>80?'var(--red)':cpu>50?'var(--yellow)':'var(--cyan)';
+  document.getElementById('mon-ram').textContent=ram+'%';
+  document.getElementById('mon-ram-bar').style.width=ram+'%';
+  document.getElementById('mon-ram-bar').style.background=ram>80?'var(--red)':ram>50?'var(--yellow)':'var(--purple)';
+  document.getElementById('mon-disk').textContent=disk+'%';
+  document.getElementById('mon-disk-bar').style.width=disk+'%';
+  document.getElementById('mon-bridge').textContent=state.isOnline?'Active':'Offline';
+  document.getElementById('mon-bridge').style.color=state.isOnline?'var(--green)':'var(--red)';
+  document.getElementById('mon-tunnel-status').textContent=state.tunnelUrl?'Connected':'Disconnected';
+  document.getElementById('mon-tunnel-status').style.color=state.tunnelUrl?'var(--green)':'var(--red)';
+  document.getElementById('mon-win-status').textContent=state.isOnline?'Online':'Offline';
+  document.getElementById('mon-win-status').style.color=state.isOnline?'var(--green)':'var(--red)';
+  // Uptime chart
+  const chart=document.getElementById('uptime-chart');
+  if (chart) {
+    const bars=state.uptimeLog.length?state.uptimeLog:Array(24).fill(0);
+    while (bars.length<24) bars.unshift(0);
+    chart.innerHTML=bars.map(v=>'<div class="uptime-bar" style="height:'+(v?'100':'10')+'%;background:'+(v?'var(--purple-dim)':'rgba(255,82,82,.2)')+'"></div>').join('');
   }
+}
 
-  function escHtml(str) {
-    return String(str)
-      .replace(/&/g,'&amp;')
-      .replace(/</g,'&lt;')
-      .replace(/>/g,'&gt;')
-      .replace(/"/g,'&quot;');
-  }
+/* ─── Settings ─── */
+function updateSettings() {
+  document.getElementById('set-bridge-url').textContent=window.location.origin;
+  document.getElementById('set-tunnel').textContent=state.tunnelUrl||'Not registered';
+  document.getElementById('set-status').textContent=state.isOnline?'Connected':'Disconnected';
+  document.getElementById('set-status').style.color=state.isOnline?'var(--green)':'var(--red)';
+}
 
-  /* ───────────────────────────────────────────────────────────
-     API: Messages
-  ─────────────────────────────────────────────────────────── */
-  async function fetchMacMessages() {
-    startSpin('spin-mac');
-    try {
-      const r = await fetch('/messages-mac', { signal: AbortSignal.timeout(5000) });
-      if (!r.ok) throw new Error();
-      const d = await r.json();
-      state.macMessages = d.messages || [];
-      renderMessages(state.macMessages, 'feed-mac', 'mac-count', 'mac');
-    } catch (e) {
-      const feed = document.getElementById('feed-mac');
-      if (!feed.querySelector('.msg-bubble')) {
-        feed.innerHTML = `<div class="empty-state"><div class="icon">⚠️</div><p>Cannot fetch messages</p></div>`;
-      }
-    } finally {
-      stopSpin('spin-mac');
-      updateMsgTotal();
-    }
-  }
+/* ─── Quick Actions ─── */
+function toggleQuickActions() {
+  const m=document.getElementById('qa-menu'),t=document.getElementById('qa-toggle');
+  m.classList.toggle('open'); t.classList.toggle('open');
+}
+async function qaAction(action) {
+  toggleQuickActions();
+  if (action==='health') { showToast('Checking health...','var(--cyan)'); await fetchHealth(); showToast(state.isOnline?'Windows is ONLINE':'Windows is OFFLINE',state.isOnline?'var(--green)':'var(--red)'); }
+  else if (action==='tunnel') { showToast('Refreshing tunnel...','var(--cyan)'); await fetchTunnel(); showToast(state.tunnelUrl?'Tunnel active!':'No tunnel','var(--'+(state.tunnelUrl?'green':'red')+')'); }
+  else if (action==='clear') { showToast('Messages refreshed','var(--cyan)'); await fetchMacMessages(); await fetchWinMessages(); }
+  else if (action==='sync') { showToast('Full sync...','var(--cyan)'); await refreshAll(); await fetchTunnel(); showToast('Sync complete!'); }
+}
 
-  async function fetchWinMessages() {
-    startSpin('spin-win');
-    try {
-      const r = await fetch('/messages', { signal: AbortSignal.timeout(5000) });
-      if (!r.ok) throw new Error();
-      const d = await r.json();
-      state.winMessages = d.messages || [];
-      renderMessages(state.winMessages, 'feed-win', 'win-count', 'win');
-    } catch (e) {
-      const feed = document.getElementById('feed-win');
-      if (!feed.querySelector('.msg-bubble')) {
-        feed.innerHTML = `<div class="empty-state"><div class="icon">⚠️</div><p>Cannot fetch messages</p></div>`;
-      }
-    } finally {
-      stopSpin('spin-win');
-      updateMsgTotal();
-    }
-  }
+/* ═══════════════════════════════════════════════════════════════
+   REFRESH CYCLE
+═══════════════════════════════════════════════════════════════ */
+async function refreshAll() {
+  await Promise.allSettled([fetchStatus(),fetchHealth(),fetchMacMessages(),fetchWinMessages(),fetchTasks()]);
+}
+async function refreshFast() {
+  await Promise.allSettled([fetchMacMessages(),fetchWinMessages(),fetchTasks()]);
+}
 
-  function updateMsgTotal() {
-    const total = state.macMessages.length + state.winMessages.length;
-    const el = document.getElementById('s-msgs');
-    el.textContent = total;
-    document.getElementById('s-msgs-meta').textContent = `${state.macMessages.length} mac · ${state.winMessages.length} win`;
-  }
+function initApp() {
+  refreshAll(); fetchTunnel(); fetchClients();
+  setInterval(refreshAll,30000);
+  setInterval(fetchTunnel,60000);
+  setInterval(refreshFast,5000);
+}
 
-  /* ───────────────────────────────────────────────────────────
-     API: Tasks
-  ─────────────────────────────────────────────────────────── */
-  async function fetchTasks() {
-    startSpin('spin-tasks');
-    try {
-      const r = await fetch('/tasks', { signal: AbortSignal.timeout(5000) });
-      if (!r.ok) throw new Error();
-      const d = await r.json();
-      state.tasks = d.tasks || [];
-      renderTasks(state.tasks);
-    } catch (e) {
-      const tbody = document.getElementById('tasks-body');
-      tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><div class="icon">⚠️</div><p>Cannot fetch tasks</p></div></td></tr>`;
-    } finally {
-      stopSpin('spin-tasks');
-    }
-  }
-
-  function renderTasks(tasks) {
-    const tbody = document.getElementById('tasks-body');
-    document.getElementById('task-count').textContent = tasks.length;
-
-    if (!tasks || tasks.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><div class="icon">📋</div><p>No tasks in queue</p></div></td></tr>`;
-      return;
-    }
-
-    const rows = tasks.slice().reverse().slice(0, 50).map((t, i) => {
-      const statusBadge = renderStatusBadge(t.status);
-      const result = t.result ? escHtml(String(t.result).substring(0, 80)) : '<span style="color:var(--text-muted)">—</span>';
-      const dur = calcDuration(t.createdAt, t.finishedAt);
-      const created = formatTs(t.createdAt);
-      return `
-        <tr>
-          <td style="color:var(--text-muted);font-variant-numeric:tabular-nums">${i+1}</td>
-          <td>
-            <div class="task-label">${escHtml(t.label || t.id || '—')}</div>
-            <div class="task-cmd">${escHtml(t.cmd || '')}</div>
-          </td>
-          <td>${statusBadge}</td>
-          <td><div class="task-result">${result}</div></td>
-          <td class="task-duration" style="color:var(--text-dim)">${dur}</td>
-          <td style="color:var(--text-muted);font-variant-numeric:tabular-nums">${created}</td>
-        </tr>`;
-    }).join('');
-
-    tbody.innerHTML = rows;
-  }
-
-  function renderStatusBadge(status) {
-    const s = (status || 'pending').toLowerCase();
-    const map = {
-      pending: { icon: '⏳', label: 'Pending',  cls: 'pending' },
-      running: { icon: '⚡', label: 'Running',  cls: 'running' },
-      done:    { icon: '✓',  label: 'Done',     cls: 'done'    },
-      success: { icon: '✓',  label: 'Done',     cls: 'done'    },
-      error:   { icon: '✕',  label: 'Error',    cls: 'error'   },
-      failed:  { icon: '✕',  label: 'Failed',   cls: 'error'   },
-    };
-    const info = map[s] || { icon: '?', label: s, cls: 'pending' };
-    return `<span class="status-badge ${info.cls}"><span class="status-badge-dot"></span>${info.label}</span>`;
-  }
-
-  /* ───────────────────────────────────────────────────────────
-     Main refresh cycle
-  ─────────────────────────────────────────────────────────── */
-  async function refreshAll() {
-    await Promise.allSettled([
-      fetchStatus(),
-      fetchHealth(),
-      fetchMacMessages(),
-      fetchWinMessages(),
-      fetchTasks(),
-    ]);
-  }
-
-  async function refreshFast() {
-    await Promise.allSettled([
-      fetchMacMessages(),
-      fetchWinMessages(),
-      fetchTasks(),
-    ]);
-  }
-
-  // Initial load
-  (async () => {
-    await refreshAll();
-    await fetchTunnel();
-  })();
-
-  // Full refresh every 30s
-  setInterval(refreshAll, 30000);
-  setInterval(fetchTunnel, 60000);
-
-  // Fast refresh (messages + tasks) every 5s
-  setInterval(refreshFast, 5000);
-
-  // Relative time refresh
-  setInterval(() => {
-    const el = document.getElementById('si-lastseen');
-    // will get updated on next fetchStatus, but update display
-  }, 10000);
+if (checkAuth()) initApp();
 </script>
 </body>
 </html>
