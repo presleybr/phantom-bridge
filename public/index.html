@@ -1,0 +1,1448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PhantomBridge — Control Center</title>
+  <style>
+    /* ─── Reset & Base ─────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:          #0a0c10;
+      --bg2:         #0e1116;
+      --card:        #111318;
+      --card2:       #161920;
+      --border:      rgba(255,255,255,.06);
+      --border2:     rgba(255,255,255,.10);
+      --purple:      #6c63ff;
+      --purple-dim:  rgba(108,99,255,.15);
+      --purple-glow: rgba(108,99,255,.35);
+      --cyan:        #00d4ff;
+      --cyan-dim:    rgba(0,212,255,.12);
+      --cyan-glow:   rgba(0,212,255,.30);
+      --green:       #00e676;
+      --yellow:      #ffd740;
+      --red:         #ff5252;
+      --text:        #e2e8f0;
+      --text-muted:  #64748b;
+      --text-dim:    #94a3b8;
+      --radius:      14px;
+      --radius-sm:   8px;
+      --shadow:      0 4px 24px rgba(0,0,0,.45);
+      --shadow-glow: 0 0 40px rgba(108,99,255,.15);
+    }
+
+    html { font-size: 15px; scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ─── Scrollbar ─────────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: var(--bg2); }
+    ::-webkit-scrollbar-thumb { background: #2a2d38; border-radius: 99px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--purple); }
+
+    /* ─── Keyframes ─────────────────────────────────────────── */
+    @keyframes gradientShift {
+      0%   { background-position: 0% 50%; }
+      50%  { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: .3; }
+    }
+    @keyframes pulse-ring {
+      0%   { transform: scale(.8); opacity: 1; }
+      100% { transform: scale(2.2); opacity: 0; }
+    }
+    @keyframes flow-dot {
+      0%   { left: -6px; opacity: 0; }
+      10%  { opacity: 1; }
+      90%  { opacity: 1; }
+      100% { left: calc(100% + 6px); opacity: 0; }
+    }
+    @keyframes shimmer {
+      0%   { background-position: -600px 0; }
+      100% { background-position: 600px 0; }
+    }
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(18px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes countUp {
+      from { opacity: 0; transform: scale(.7); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to   { transform: rotate(360deg); }
+    }
+    @keyframes statusPulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(0,230,118,.5); }
+      50%       { box-shadow: 0 0 0 6px rgba(0,230,118,0); }
+    }
+
+    /* ─── Header ─────────────────────────────────────────────── */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: linear-gradient(135deg, #0a0c10 0%, #111420 50%, #0a0c10 100%);
+      border-bottom: 1px solid var(--border2);
+      backdrop-filter: blur(20px);
+      padding: 0 28px;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+    }
+    .logo-icon {
+      width: 36px; height: 36px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--purple), var(--cyan));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+      box-shadow: 0 0 20px var(--purple-glow);
+      flex-shrink: 0;
+    }
+    .logo-text {
+      font-size: 1.2rem;
+      font-weight: 700;
+      letter-spacing: -.5px;
+      background: linear-gradient(90deg, #fff 30%, var(--cyan) 70%, var(--purple) 100%);
+      background-size: 200% auto;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: gradientShift 5s ease infinite;
+    }
+    .logo-sub {
+      font-size: .68rem;
+      color: var(--text-muted);
+      font-weight: 400;
+      letter-spacing: .5px;
+      text-transform: uppercase;
+      -webkit-text-fill-color: var(--text-muted);
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .live-clock {
+      font-size: .82rem;
+      color: var(--text-dim);
+      font-variant-numeric: tabular-nums;
+      letter-spacing: .5px;
+    }
+    .live-clock span { color: var(--text-muted); margin: 0 4px; }
+
+    .conn-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 14px;
+      border-radius: 99px;
+      background: rgba(0,230,118,.08);
+      border: 1px solid rgba(0,230,118,.2);
+      font-size: .78rem;
+      font-weight: 600;
+      color: var(--green);
+      letter-spacing: .3px;
+      transition: all .3s;
+    }
+    .conn-badge.offline {
+      background: rgba(255,82,82,.08);
+      border-color: rgba(255,82,82,.2);
+      color: var(--red);
+    }
+    .conn-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--green);
+      position: relative;
+      animation: blink 1.8s ease-in-out infinite;
+    }
+    .conn-dot::before {
+      content: '';
+      position: absolute;
+      inset: -3px;
+      border-radius: 50%;
+      background: var(--green);
+      animation: pulse-ring 1.8s ease-out infinite;
+    }
+    .conn-badge.offline .conn-dot { background: var(--red); animation: none; }
+    .conn-badge.offline .conn-dot::before { display: none; }
+
+    /* ─── Layout ─────────────────────────────────────────────── */
+    .page-wrapper {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 28px 28px 60px;
+    }
+
+    .section-label {
+      font-size: .7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--text-muted);
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .section-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* ─── Stats Row ──────────────────────────────────────────── */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 28px;
+      animation: fadeInUp .5s ease both;
+    }
+
+    .stat-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 22px;
+      position: relative;
+      overflow: hidden;
+      transition: transform .2s, box-shadow .2s, border-color .2s;
+      cursor: default;
+    }
+    .stat-card:hover {
+      transform: translateY(-3px);
+      box-shadow: var(--shadow-glow);
+      border-color: var(--border2);
+    }
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, var(--purple), var(--cyan));
+      opacity: 0;
+      transition: opacity .3s;
+    }
+    .stat-card:hover::before { opacity: 1; }
+
+    .stat-card .card-shine {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 0% 0%, rgba(108,99,255,.06) 0%, transparent 60%);
+      pointer-events: none;
+    }
+
+    .stat-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .stat-label {
+      font-size: .72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .8px;
+      color: var(--text-muted);
+    }
+    .stat-icon {
+      width: 36px; height: 36px;
+      border-radius: var(--radius-sm);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+    }
+    .stat-icon.purple { background: var(--purple-dim); }
+    .stat-icon.cyan   { background: var(--cyan-dim); }
+    .stat-icon.green  { background: rgba(0,230,118,.12); }
+    .stat-icon.yellow { background: rgba(255,215,64,.12); }
+
+    .stat-value {
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: -.5px;
+      line-height: 1.1;
+      animation: countUp .4s ease both;
+    }
+    .stat-value.online  { color: var(--green); }
+    .stat-value.offline { color: var(--red); }
+    .stat-value.active  { color: var(--cyan); }
+    .stat-value.inactive{ color: var(--text-muted); }
+
+    .stat-meta {
+      font-size: .74rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .stat-meta .dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      display: inline-block;
+      flex-shrink: 0;
+    }
+    .dot.green  { background: var(--green); animation: statusPulse 2s ease infinite; }
+    .dot.red    { background: var(--red); }
+    .dot.cyan   { background: var(--cyan); animation: statusPulse 2s ease infinite; }
+    .dot.yellow { background: var(--yellow); }
+
+    .tunnel-url {
+      font-size: .82rem;
+      color: var(--cyan);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 130px;
+    }
+    .copy-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 2px 4px;
+      border-radius: 4px;
+      font-size: 12px;
+      transition: color .2s, background .2s;
+      margin-left: 4px;
+    }
+    .copy-btn:hover { color: var(--cyan); background: var(--cyan-dim); }
+    .copy-btn.copied { color: var(--green); }
+
+    /* ─── Flow Diagram ───────────────────────────────────────── */
+    .flow-section {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px 28px;
+      margin-bottom: 28px;
+      animation: fadeInUp .5s .1s ease both;
+      overflow-x: auto;
+    }
+
+    .flow-diagram {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+      min-width: 640px;
+      padding: 10px 0;
+    }
+
+    .flow-node {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    .flow-pill {
+      padding: 10px 18px;
+      border-radius: 99px;
+      font-size: .78rem;
+      font-weight: 600;
+      letter-spacing: .3px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      position: relative;
+      transition: transform .2s;
+      white-space: nowrap;
+    }
+    .flow-pill:hover { transform: scale(1.05); }
+
+    .flow-pill.internet  { background: rgba(255,215,64,.1);  border: 1px solid rgba(255,215,64,.25); color: var(--yellow); }
+    .flow-pill.phantom   { background: var(--purple-dim);    border: 1px solid rgba(108,99,255,.35); color: var(--purple); box-shadow: 0 0 20px rgba(108,99,255,.2); }
+    .flow-pill.cloudflare{ background: rgba(255,99,71,.1);   border: 1px solid rgba(255,99,71,.25);  color: #ff6347; }
+    .flow-pill.windows   { background: rgba(0,120,215,.12);  border: 1px solid rgba(0,120,215,.3);   color: #0078d7; }
+    .flow-pill.photoshop { background: rgba(49,168,255,.1);  border: 1px solid rgba(49,168,255,.3);  color: #31a8ff; box-shadow: 0 0 20px rgba(49,168,255,.15); }
+
+    .flow-node-label {
+      font-size: .65rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: .8px;
+    }
+
+    .flow-connector {
+      position: relative;
+      flex: 1;
+      height: 2px;
+      min-width: 32px;
+      max-width: 80px;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,.08), transparent);
+      margin-bottom: 22px;
+      overflow: visible;
+    }
+    .flow-connector::after {
+      content: '▸';
+      position: absolute;
+      right: -7px;
+      top: -8px;
+      font-size: 12px;
+      color: var(--text-muted);
+      opacity: .5;
+    }
+    .flow-dot-anim {
+      position: absolute;
+      top: -3px;
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--cyan);
+      box-shadow: 0 0 8px var(--cyan);
+      animation: flow-dot 2.5s linear infinite;
+    }
+    .flow-connector:nth-child(2)  .flow-dot-anim { animation-delay: 0s; }
+    .flow-connector:nth-child(4)  .flow-dot-anim { animation-delay: .5s; }
+    .flow-connector:nth-child(6)  .flow-dot-anim { animation-delay: 1s; }
+    .flow-connector:nth-child(8)  .flow-dot-anim { animation-delay: 1.5s; }
+    .flow-connector:nth-child(10) .flow-dot-anim { animation-delay: 2s; }
+
+    /* ─── Messages Grid ──────────────────────────────────────── */
+    .messages-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 28px;
+      animation: fadeInUp .5s .15s ease both;
+    }
+
+    .msg-panel {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      display: flex;
+      flex-direction: column;
+      max-height: 380px;
+    }
+
+    .panel-header {
+      padding: 16px 20px 12px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .panel-title {
+      font-size: .85rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .panel-title .badge {
+      font-size: .65rem;
+      padding: 2px 8px;
+      border-radius: 99px;
+      font-weight: 700;
+    }
+    .badge.purple { background: var(--purple-dim); color: var(--purple); border: 1px solid rgba(108,99,255,.2); }
+    .badge.cyan   { background: var(--cyan-dim);   color: var(--cyan);   border: 1px solid rgba(0,212,255,.2); }
+
+    .refresh-tag {
+      font-size: .65rem;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .refresh-spinner {
+      width: 10px; height: 10px;
+      border: 1.5px solid var(--text-muted);
+      border-top-color: var(--purple);
+      border-radius: 50%;
+    }
+    .refresh-spinner.spinning { animation: spin .7s linear infinite; }
+
+    .msg-feed {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .msg-feed:empty::before {
+      content: 'No messages yet…';
+      color: var(--text-muted);
+      font-size: .78rem;
+      text-align: center;
+      margin: auto;
+      padding: 20px;
+    }
+
+    .msg-bubble {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      animation: fadeInUp .3s ease;
+    }
+    .msg-bubble-inner {
+      padding: 9px 13px;
+      border-radius: 10px;
+      font-size: .8rem;
+      line-height: 1.45;
+      max-width: 100%;
+      word-break: break-word;
+    }
+    .msg-bubble.mac .msg-bubble-inner  { background: var(--purple-dim); border: 1px solid rgba(108,99,255,.2); color: var(--text); }
+    .msg-bubble.win .msg-bubble-inner  { background: var(--cyan-dim);   border: 1px solid rgba(0,212,255,.2);  color: var(--text); }
+    .msg-meta {
+      font-size: .65rem;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0 2px;
+    }
+    .msg-from {
+      font-weight: 600;
+      color: var(--text-dim);
+    }
+
+    /* ─── Task Queue ─────────────────────────────────────────── */
+    .tasks-section {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 28px;
+      animation: fadeInUp .5s .2s ease both;
+      overflow: hidden;
+    }
+
+    .tasks-table-wrap { overflow-x: auto; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .82rem;
+    }
+    thead tr {
+      background: var(--bg2);
+    }
+    th {
+      padding: 11px 18px;
+      text-align: left;
+      font-size: .68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+      white-space: nowrap;
+      border-bottom: 1px solid var(--border);
+    }
+    td {
+      padding: 13px 18px;
+      border-bottom: 1px solid rgba(255,255,255,.03);
+      color: var(--text-dim);
+      vertical-align: middle;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255,255,255,.02); }
+
+    .task-label {
+      font-weight: 600;
+      color: var(--text);
+      max-width: 180px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .task-cmd {
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      font-size: .72rem;
+      color: var(--text-muted);
+      max-width: 200px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .task-result {
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      font-size: .72rem;
+      color: var(--text-dim);
+      max-width: 220px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .task-duration {
+      white-space: nowrap;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 10px;
+      border-radius: 99px;
+      font-size: .68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      white-space: nowrap;
+    }
+    .status-badge.pending  { background: rgba(255,215,64,.1);  color: var(--yellow); border: 1px solid rgba(255,215,64,.2); }
+    .status-badge.running  { background: rgba(0,212,255,.1);   color: var(--cyan);   border: 1px solid rgba(0,212,255,.2); animation: blink 1.2s ease infinite; }
+    .status-badge.done     { background: rgba(0,230,118,.1);   color: var(--green);  border: 1px solid rgba(0,230,118,.2); }
+    .status-badge.error    { background: rgba(255,82,82,.1);   color: var(--red);    border: 1px solid rgba(255,82,82,.2); }
+
+    .status-badge-dot {
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: currentColor;
+      flex-shrink: 0;
+    }
+
+    /* ─── System Info ────────────────────────────────────────── */
+    .sysinfo-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      animation: fadeInUp .5s .25s ease both;
+    }
+
+    .info-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 22px;
+      transition: border-color .2s, transform .2s;
+    }
+    .info-card:hover {
+      border-color: var(--border2);
+      transform: translateY(-2px);
+    }
+    .info-card-title {
+      font-size: .68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .info-card-title .icon { font-size: 14px; }
+    .info-value {
+      font-size: .95rem;
+      font-weight: 600;
+      color: var(--text);
+      word-break: break-all;
+    }
+    .info-value.mono {
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      font-size: .78rem;
+      color: var(--cyan);
+    }
+    .info-sub {
+      font-size: .72rem;
+      color: var(--text-muted);
+      margin-top: 6px;
+    }
+
+    .tunnel-link {
+      color: var(--cyan);
+      text-decoration: none;
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      font-size: .75rem;
+      transition: opacity .2s;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .tunnel-link:hover { opacity: .75; }
+
+    /* ─── Skeleton ───────────────────────────────────────────── */
+    .skeleton {
+      background: linear-gradient(90deg, var(--card2) 25%, rgba(255,255,255,.04) 50%, var(--card2) 75%);
+      background-size: 600px 100%;
+      animation: shimmer 1.4s ease infinite;
+      border-radius: 6px;
+    }
+    .sk-line { height: 14px; margin-bottom: 8px; }
+    .sk-line.short { width: 60%; }
+    .sk-line.long  { width: 90%; }
+    .sk-line.mid   { width: 75%; }
+    .sk-block { height: 42px; margin-bottom: 8px; border-radius: 8px; }
+
+    /* ─── Empty / Offline ────────────────────────────────────── */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 20px;
+      color: var(--text-muted);
+      gap: 8px;
+    }
+    .empty-state .icon { font-size: 28px; opacity: .4; }
+    .empty-state p { font-size: .78rem; }
+
+    /* ─── Scrollbar in feeds ─────────────────────────────────── */
+    .msg-feed::-webkit-scrollbar { width: 3px; }
+    .msg-feed::-webkit-scrollbar-thumb { background: rgba(255,255,255,.08); }
+
+    /* ─── Responsive ─────────────────────────────────────────── */
+    @media (max-width: 1100px) {
+      .stats-row { grid-template-columns: repeat(2, 1fr); }
+      .sysinfo-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 720px) {
+      .page-wrapper { padding: 16px 14px 40px; }
+      .stats-row { grid-template-columns: 1fr 1fr; gap: 10px; }
+      .messages-grid { grid-template-columns: 1fr; }
+      .sysinfo-grid { grid-template-columns: 1fr; }
+      header { padding: 0 16px; }
+      .live-clock { display: none; }
+      .logo-sub { display: none; }
+    }
+    @media (max-width: 440px) {
+      .stats-row { grid-template-columns: 1fr; }
+    }
+
+    /* ─── Top gradient bar ───────────────────────────────────── */
+    .top-bar {
+      height: 3px;
+      background: linear-gradient(90deg, var(--purple), var(--cyan), var(--purple));
+      background-size: 200% auto;
+      animation: gradientShift 3s linear infinite;
+    }
+
+    /* ─── Footer ─────────────────────────────────────────────── */
+    .footer {
+      text-align: center;
+      padding: 12px 0 0;
+      font-size: .68rem;
+      color: var(--text-muted);
+      letter-spacing: .5px;
+    }
+    .footer a {
+      color: var(--purple);
+      text-decoration: none;
+    }
+
+    /* ─── Tooltip ────────────────────────────────────────────── */
+    [data-tip] {
+      position: relative;
+    }
+    [data-tip]::after {
+      content: attr(data-tip);
+      position: absolute;
+      bottom: calc(100% + 6px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: #1e2028;
+      border: 1px solid var(--border2);
+      color: var(--text);
+      font-size: .68rem;
+      padding: 4px 10px;
+      border-radius: 6px;
+      white-space: nowrap;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity .2s;
+      z-index: 99;
+    }
+    [data-tip]:hover::after { opacity: 1; }
+
+    /* ─── Notification toast ─────────────────────────────────── */
+    #toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: #1e2028;
+      border: 1px solid var(--border2);
+      border-radius: 99px;
+      padding: 9px 22px;
+      font-size: .78rem;
+      font-weight: 600;
+      color: var(--green);
+      box-shadow: 0 8px 32px rgba(0,0,0,.5);
+      z-index: 999;
+      transition: transform .3s cubic-bezier(.34,1.56,.64,1);
+      pointer-events: none;
+    }
+    #toast.show { transform: translateX(-50%) translateY(0); }
+  </style>
+</head>
+<body>
+
+<div class="top-bar"></div>
+
+<!-- ── Header ─────────────────────────────────────────────── -->
+<header>
+  <div class="logo">
+    <div class="logo-icon">👻</div>
+    <div>
+      <div class="logo-text">PhantomBridge</div>
+      <div class="logo-sub">Control Center</div>
+    </div>
+  </div>
+
+  <div class="header-right">
+    <div class="live-clock" id="clock">—</div>
+    <div class="conn-badge offline" id="conn-badge">
+      <div class="conn-dot"></div>
+      <span id="conn-text">Connecting…</span>
+    </div>
+  </div>
+</header>
+
+<!-- ── Page ───────────────────────────────────────────────── -->
+<div class="page-wrapper">
+
+  <!-- Stats Row -->
+  <div class="section-label">Overview</div>
+  <div class="stats-row">
+
+    <!-- Windows Server -->
+    <div class="stat-card">
+      <div class="card-shine"></div>
+      <div class="stat-header">
+        <div class="stat-label">Windows Server</div>
+        <div class="stat-icon purple">🖥️</div>
+      </div>
+      <div class="stat-value offline" id="s-windows">—</div>
+      <div class="stat-meta">
+        <span class="dot red" id="s-windows-dot"></span>
+        <span id="s-windows-meta">Checking…</span>
+      </div>
+    </div>
+
+    <!-- Photoshop -->
+    <div class="stat-card">
+      <div class="card-shine"></div>
+      <div class="stat-header">
+        <div class="stat-label">Photoshop</div>
+        <div class="stat-icon cyan">🎨</div>
+      </div>
+      <div class="stat-value inactive" id="s-photoshop">—</div>
+      <div class="stat-meta">
+        <span class="dot yellow" id="s-ps-dot"></span>
+        <span id="s-ps-meta">Checking…</span>
+      </div>
+    </div>
+
+    <!-- Tunnel -->
+    <div class="stat-card">
+      <div class="card-shine"></div>
+      <div class="stat-header">
+        <div class="stat-label">Public Tunnel</div>
+        <div class="stat-icon green">🌐</div>
+      </div>
+      <div style="display:flex; align-items:center; gap:4px;">
+        <div class="tunnel-url" id="s-tunnel">—</div>
+        <button class="copy-btn" id="copy-tunnel-btn" onclick="copyTunnel()" data-tip="Copy URL">⎘</button>
+      </div>
+      <div class="stat-meta">
+        <span class="dot green" id="s-tunnel-dot" style="background:var(--text-muted)"></span>
+        <span id="s-tunnel-meta">Fetching…</span>
+      </div>
+    </div>
+
+    <!-- Messages -->
+    <div class="stat-card">
+      <div class="card-shine"></div>
+      <div class="stat-header">
+        <div class="stat-label">Total Messages</div>
+        <div class="stat-icon yellow">💬</div>
+      </div>
+      <div class="stat-value" id="s-msgs" style="color:var(--yellow)">—</div>
+      <div class="stat-meta">
+        <span class="dot yellow"></span>
+        <span id="s-msgs-meta">Mac + Windows queue</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Connection Flow -->
+  <div class="section-label">Signal Path</div>
+  <div class="flow-section">
+    <div class="flow-diagram">
+      <div class="flow-node">
+        <div class="flow-pill internet">🌍 Internet</div>
+        <div class="flow-node-label">Client</div>
+      </div>
+      <div class="flow-connector"><div class="flow-dot-anim"></div></div>
+      <div class="flow-node">
+        <div class="flow-pill phantom">👻 PhantomBridge</div>
+        <div class="flow-node-label">Mac · Node.js</div>
+      </div>
+      <div class="flow-connector"><div class="flow-dot-anim"></div></div>
+      <div class="flow-node">
+        <div class="flow-pill cloudflare">☁️ Cloudflare</div>
+        <div class="flow-node-label">Tunnel</div>
+      </div>
+      <div class="flow-connector"><div class="flow-dot-anim"></div></div>
+      <div class="flow-node">
+        <div class="flow-pill windows">🪟 Windows</div>
+        <div class="flow-node-label">Server · :4000</div>
+      </div>
+      <div class="flow-connector"><div class="flow-dot-anim"></div></div>
+      <div class="flow-node">
+        <div class="flow-pill photoshop">🔷 Photoshop</div>
+        <div class="flow-node-label">Creative Engine</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Messages -->
+  <div class="section-label">Live Message Feed</div>
+  <div class="messages-grid">
+
+    <!-- Mac → Windows -->
+    <div class="msg-panel">
+      <div class="panel-header">
+        <div class="panel-title">
+          🍎 Mac → Windows
+          <span class="badge purple" id="mac-count">0</span>
+        </div>
+        <div class="refresh-tag">
+          <div class="refresh-spinner" id="spin-mac"></div>
+          Auto-refresh 5s
+        </div>
+      </div>
+      <div class="msg-feed" id="feed-mac">
+        <div class="sk-block skeleton"></div>
+        <div class="sk-block skeleton"></div>
+        <div class="sk-block skeleton"></div>
+      </div>
+    </div>
+
+    <!-- Windows → Mac -->
+    <div class="msg-panel">
+      <div class="panel-header">
+        <div class="panel-title">
+          🪟 Windows → Mac
+          <span class="badge cyan" id="win-count">0</span>
+        </div>
+        <div class="refresh-tag">
+          <div class="refresh-spinner" id="spin-win"></div>
+          Auto-refresh 5s
+        </div>
+      </div>
+      <div class="msg-feed" id="feed-win">
+        <div class="sk-block skeleton"></div>
+        <div class="sk-block skeleton"></div>
+        <div class="sk-block skeleton"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Tasks -->
+  <div class="section-label">Task Queue</div>
+  <div class="tasks-section">
+    <div class="panel-header">
+      <div class="panel-title">
+        ⚡ Recent Tasks
+        <span class="badge purple" id="task-count">0</span>
+      </div>
+      <div class="refresh-tag">
+        <div class="refresh-spinner" id="spin-tasks"></div>
+        Auto-refresh 5s
+      </div>
+    </div>
+    <div class="tasks-table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Label / Command</th>
+            <th>Status</th>
+            <th>Result</th>
+            <th>Duration</th>
+            <th>Created</th>
+          </tr>
+        </thead>
+        <tbody id="tasks-body">
+          <tr>
+            <td colspan="6">
+              <div class="empty-state">
+                <div class="icon">📋</div>
+                <p>Loading tasks…</p>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- System Info -->
+  <div class="section-label">System Info</div>
+  <div class="sysinfo-grid">
+
+    <div class="info-card">
+      <div class="info-card-title"><span class="icon">⏱️</span> Session Uptime</div>
+      <div class="info-value" id="si-uptime">—</div>
+      <div class="info-sub" id="si-uptime-sub">Since dashboard loaded</div>
+    </div>
+
+    <div class="info-card">
+      <div class="info-card-title"><span class="icon">📡</span> Last Registration</div>
+      <div class="info-value" id="si-lastseen">—</div>
+      <div class="info-sub">PhantomBridge heartbeat</div>
+    </div>
+
+    <div class="info-card">
+      <div class="info-card-title"><span class="icon">🔗</span> Tunnel URL</div>
+      <div id="si-tunnel-wrap">
+        <div class="info-value mono" id="si-tunnel">—</div>
+      </div>
+      <div class="info-sub">Public endpoint (Cloudflare)</div>
+    </div>
+
+  </div>
+
+  <div class="footer">
+    PhantomBridge Dashboard · <a href="#">mac ↔ windows automation bridge</a>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast">Copied!</div>
+
+<script>
+  /* ───────────────────────────────────────────────────────────
+     State
+  ─────────────────────────────────────────────────────────── */
+  const state = {
+    tunnelUrl: null,
+    sessionStart: Date.now(),
+    macMessages: [],
+    winMessages: [],
+    tasks: [],
+    isOnline: false,
+  };
+
+  /* ───────────────────────────────────────────────────────────
+     Clock
+  ─────────────────────────────────────────────────────────── */
+  function updateClock() {
+    const now = new Date();
+    const d = now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    const t = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+    document.getElementById('clock').innerHTML = `${d}<span>·</span>${t}`;
+  }
+  setInterval(updateClock, 1000);
+  updateClock();
+
+  /* ───────────────────────────────────────────────────────────
+     Session Uptime
+  ─────────────────────────────────────────────────────────── */
+  function updateUptime() {
+    const s = Math.floor((Date.now() - state.sessionStart) / 1000);
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const sec = s % 60;
+    let str = '';
+    if (h) str += `${h}h `;
+    str += `${String(m).padStart(2,'0')}m ${String(sec).padStart(2,'0')}s`;
+    document.getElementById('si-uptime').textContent = str;
+  }
+  setInterval(updateUptime, 1000);
+
+  /* ───────────────────────────────────────────────────────────
+     Helpers
+  ─────────────────────────────────────────────────────────── */
+  function formatTs(ts) {
+    if (!ts) return '—';
+    const d = new Date(ts);
+    if (isNaN(d)) return ts;
+    return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+  }
+
+  function formatRelative(ts) {
+    if (!ts) return '—';
+    const d = new Date(ts);
+    if (isNaN(d)) return ts;
+    const diff = Math.round((Date.now() - d) / 1000);
+    if (diff < 5)  return 'just now';
+    if (diff < 60) return `${diff}s ago`;
+    if (diff < 3600) return `${Math.floor(diff/60)}m ago`;
+    return `${Math.floor(diff/3600)}h ago`;
+  }
+
+  function calcDuration(created, finished) {
+    if (!created || !finished) return '—';
+    const ms = new Date(finished) - new Date(created);
+    if (isNaN(ms) || ms < 0) return '—';
+    if (ms < 1000) return `${ms}ms`;
+    return `${(ms/1000).toFixed(1)}s`;
+  }
+
+  function showToast(msg = 'Copied!') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2200);
+  }
+
+  function copyTunnel() {
+    if (!state.tunnelUrl) return;
+    navigator.clipboard.writeText(state.tunnelUrl).then(() => {
+      const btn = document.getElementById('copy-tunnel-btn');
+      btn.classList.add('copied');
+      btn.textContent = '✓';
+      showToast('Tunnel URL copied!');
+      setTimeout(() => { btn.classList.remove('copied'); btn.textContent = '⎘'; }, 2000);
+    });
+  }
+  // expose globally
+  window.copyTunnel = copyTunnel;
+
+  /* ───────────────────────────────────────────────────────────
+     Spinner helpers
+  ─────────────────────────────────────────────────────────── */
+  function startSpin(id) {
+    document.getElementById(id)?.classList.add('spinning');
+  }
+  function stopSpin(id) {
+    document.getElementById(id)?.classList.remove('spinning');
+  }
+
+  /* ───────────────────────────────────────────────────────────
+     Connection badge
+  ─────────────────────────────────────────────────────────── */
+  function setOnline(online) {
+    state.isOnline = online;
+    const badge = document.getElementById('conn-badge');
+    const text  = document.getElementById('conn-text');
+    if (online) {
+      badge.classList.remove('offline');
+      text.textContent = 'Connected';
+    } else {
+      badge.classList.add('offline');
+      text.textContent = 'Offline';
+    }
+  }
+
+  /* ───────────────────────────────────────────────────────────
+     API: /status (PhantomBridge own)
+  ─────────────────────────────────────────────────────────── */
+  async function fetchStatus() {
+    try {
+      const r = await fetch('/status');
+      if (!r.ok) throw new Error();
+      const d = await r.json();
+      setOnline(true);
+
+      const lastSeenEl = document.getElementById('si-lastseen');
+      if (d.lastSeen) {
+        lastSeenEl.textContent = formatRelative(d.lastSeen);
+        lastSeenEl.title = new Date(d.lastSeen).toLocaleString();
+      } else {
+        lastSeenEl.textContent = 'Never';
+      }
+    } catch (e) {
+      // will try health as fallback
+    }
+  }
+
+  /* ───────────────────────────────────────────────────────────
+     API: /health (Windows server)
+  ─────────────────────────────────────────────────────────── */
+  async function fetchHealth() {
+    const wEl   = document.getElementById('s-windows');
+    const wMeta = document.getElementById('s-windows-meta');
+    const wDot  = document.getElementById('s-windows-dot');
+    const psEl  = document.getElementById('s-photoshop');
+    const psMeta= document.getElementById('s-ps-meta');
+    const psDot = document.getElementById('s-ps-dot');
+
+    try {
+      const r = await fetch('/health', { signal: AbortSignal.timeout(5000) });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const d = await r.json();
+
+      setOnline(true);
+
+      wEl.textContent  = 'ONLINE';
+      wEl.className    = 'stat-value online';
+      wMeta.textContent= 'Windows server reachable';
+      wDot.className   = 'dot green';
+
+      const psActive = d.psd === true || d.psd === 'true' || d.psd === 1;
+      psEl.textContent  = psActive ? 'ACTIVE' : 'INACTIVE';
+      psEl.className    = psActive ? 'stat-value active' : 'stat-value inactive';
+      psMeta.textContent= psActive ? 'Photoshop running' : 'Not detected';
+      psDot.className   = psActive ? 'dot cyan' : 'dot yellow';
+
+    } catch (e) {
+      setOnline(false);
+      wEl.textContent  = 'OFFLINE';
+      wEl.className    = 'stat-value offline';
+      wMeta.textContent= 'Cannot reach Windows';
+      wDot.className   = 'dot red';
+
+      psEl.textContent  = '—';
+      psEl.className    = 'stat-value inactive';
+      psMeta.textContent= 'Windows unreachable';
+      psDot.className   = 'dot red';
+    }
+  }
+
+  /* ───────────────────────────────────────────────────────────
+     API: /tunnel-url
+  ─────────────────────────────────────────────────────────── */
+  async function fetchTunnel() {
+    const el     = document.getElementById('s-tunnel');
+    const meta   = document.getElementById('s-tunnel-meta');
+    const dot    = document.getElementById('s-tunnel-dot');
+    const siEl   = document.getElementById('si-tunnel');
+    const siWrap = document.getElementById('si-tunnel-wrap');
+
+    try {
+      const r = await fetch('/tunnel-url', { signal: AbortSignal.timeout(5000) });
+      if (!r.ok) throw new Error();
+      const d = await r.json();
+
+      if (d.url) {
+        state.tunnelUrl = d.url;
+        const short = d.url.replace(/^https?:\/\//, '').substring(0, 28) + (d.url.length > 40 ? '…' : '');
+        el.textContent    = short;
+        meta.textContent  = 'Tunnel active';
+        dot.className     = 'dot green';
+        siEl.textContent  = d.url;
+        siWrap.innerHTML  = `<a class="tunnel-link" href="${d.url}" target="_blank" rel="noopener">🔗 ${d.url} ↗</a>`;
+      } else {
+        throw new Error('no url');
+      }
+    } catch (e) {
+      el.textContent   = 'Not available';
+      meta.textContent = 'Tunnel offline';
+      dot.className    = 'dot red';
+      siEl.textContent = 'No tunnel configured';
+    }
+  }
+
+  /* ───────────────────────────────────────────────────────────
+     Render messages
+  ─────────────────────────────────────────────────────────── */
+  function renderMessages(msgs, feedId, countId, side) {
+    const feed  = document.getElementById(feedId);
+    const count = document.getElementById(countId);
+    count.textContent = msgs.length;
+
+    if (!msgs || msgs.length === 0) {
+      feed.innerHTML = `<div class="empty-state"><div class="icon">📭</div><p>No messages yet</p></div>`;
+      return;
+    }
+
+    // Only re-render if count changed to avoid flicker
+    const html = msgs.slice().reverse().map(m => {
+      const text = escHtml(m.message || m.text || JSON.stringify(m));
+      return `
+        <div class="msg-bubble ${side}">
+          <div class="msg-bubble-inner">${text}</div>
+          <div class="msg-meta">
+            <span class="msg-from">${escHtml(m.from || 'system')}</span>
+            · ${formatTs(m.timestamp || m.createdAt)}
+          </div>
+        </div>`;
+    }).join('');
+
+    if (feed.dataset.lastHtml !== html) {
+      feed.innerHTML = html;
+      feed.dataset.lastHtml = html;
+      // Scroll to bottom
+      feed.scrollTop = feed.scrollHeight;
+    }
+  }
+
+  function escHtml(str) {
+    return String(str)
+      .replace(/&/g,'&amp;')
+      .replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;');
+  }
+
+  /* ───────────────────────────────────────────────────────────
+     API: Messages
+  ─────────────────────────────────────────────────────────── */
+  async function fetchMacMessages() {
+    startSpin('spin-mac');
+    try {
+      const r = await fetch('/messages-mac', { signal: AbortSignal.timeout(5000) });
+      if (!r.ok) throw new Error();
+      const d = await r.json();
+      state.macMessages = d.messages || [];
+      renderMessages(state.macMessages, 'feed-mac', 'mac-count', 'mac');
+    } catch (e) {
+      const feed = document.getElementById('feed-mac');
+      if (!feed.querySelector('.msg-bubble')) {
+        feed.innerHTML = `<div class="empty-state"><div class="icon">⚠️</div><p>Cannot fetch messages</p></div>`;
+      }
+    } finally {
+      stopSpin('spin-mac');
+      updateMsgTotal();
+    }
+  }
+
+  async function fetchWinMessages() {
+    startSpin('spin-win');
+    try {
+      const r = await fetch('/messages', { signal: AbortSignal.timeout(5000) });
+      if (!r.ok) throw new Error();
+      const d = await r.json();
+      state.winMessages = d.messages || [];
+      renderMessages(state.winMessages, 'feed-win', 'win-count', 'win');
+    } catch (e) {
+      const feed = document.getElementById('feed-win');
+      if (!feed.querySelector('.msg-bubble')) {
+        feed.innerHTML = `<div class="empty-state"><div class="icon">⚠️</div><p>Cannot fetch messages</p></div>`;
+      }
+    } finally {
+      stopSpin('spin-win');
+      updateMsgTotal();
+    }
+  }
+
+  function updateMsgTotal() {
+    const total = state.macMessages.length + state.winMessages.length;
+    const el = document.getElementById('s-msgs');
+    el.textContent = total;
+    document.getElementById('s-msgs-meta').textContent = `${state.macMessages.length} mac · ${state.winMessages.length} win`;
+  }
+
+  /* ───────────────────────────────────────────────────────────
+     API: Tasks
+  ─────────────────────────────────────────────────────────── */
+  async function fetchTasks() {
+    startSpin('spin-tasks');
+    try {
+      const r = await fetch('/tasks', { signal: AbortSignal.timeout(5000) });
+      if (!r.ok) throw new Error();
+      const d = await r.json();
+      state.tasks = d.tasks || [];
+      renderTasks(state.tasks);
+    } catch (e) {
+      const tbody = document.getElementById('tasks-body');
+      tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><div class="icon">⚠️</div><p>Cannot fetch tasks</p></div></td></tr>`;
+    } finally {
+      stopSpin('spin-tasks');
+    }
+  }
+
+  function renderTasks(tasks) {
+    const tbody = document.getElementById('tasks-body');
+    document.getElementById('task-count').textContent = tasks.length;
+
+    if (!tasks || tasks.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><div class="icon">📋</div><p>No tasks in queue</p></div></td></tr>`;
+      return;
+    }
+
+    const rows = tasks.slice().reverse().slice(0, 50).map((t, i) => {
+      const statusBadge = renderStatusBadge(t.status);
+      const result = t.result ? escHtml(String(t.result).substring(0, 80)) : '<span style="color:var(--text-muted)">—</span>';
+      const dur = calcDuration(t.createdAt, t.finishedAt);
+      const created = formatTs(t.createdAt);
+      return `
+        <tr>
+          <td style="color:var(--text-muted);font-variant-numeric:tabular-nums">${i+1}</td>
+          <td>
+            <div class="task-label">${escHtml(t.label || t.id || '—')}</div>
+            <div class="task-cmd">${escHtml(t.cmd || '')}</div>
+          </td>
+          <td>${statusBadge}</td>
+          <td><div class="task-result">${result}</div></td>
+          <td class="task-duration" style="color:var(--text-dim)">${dur}</td>
+          <td style="color:var(--text-muted);font-variant-numeric:tabular-nums">${created}</td>
+        </tr>`;
+    }).join('');
+
+    tbody.innerHTML = rows;
+  }
+
+  function renderStatusBadge(status) {
+    const s = (status || 'pending').toLowerCase();
+    const map = {
+      pending: { icon: '⏳', label: 'Pending',  cls: 'pending' },
+      running: { icon: '⚡', label: 'Running',  cls: 'running' },
+      done:    { icon: '✓',  label: 'Done',     cls: 'done'    },
+      success: { icon: '✓',  label: 'Done',     cls: 'done'    },
+      error:   { icon: '✕',  label: 'Error',    cls: 'error'   },
+      failed:  { icon: '✕',  label: 'Failed',   cls: 'error'   },
+    };
+    const info = map[s] || { icon: '?', label: s, cls: 'pending' };
+    return `<span class="status-badge ${info.cls}"><span class="status-badge-dot"></span>${info.label}</span>`;
+  }
+
+  /* ───────────────────────────────────────────────────────────
+     Main refresh cycle
+  ─────────────────────────────────────────────────────────── */
+  async function refreshAll() {
+    await Promise.allSettled([
+      fetchStatus(),
+      fetchHealth(),
+      fetchMacMessages(),
+      fetchWinMessages(),
+      fetchTasks(),
+    ]);
+  }
+
+  async function refreshFast() {
+    await Promise.allSettled([
+      fetchMacMessages(),
+      fetchWinMessages(),
+      fetchTasks(),
+    ]);
+  }
+
+  // Initial load
+  (async () => {
+    await refreshAll();
+    await fetchTunnel();
+  })();
+
+  // Full refresh every 30s
+  setInterval(refreshAll, 30000);
+  setInterval(fetchTunnel, 60000);
+
+  // Fast refresh (messages + tasks) every 5s
+  setInterval(refreshFast, 5000);
+
+  // Relative time refresh
+  setInterval(() => {
+    const el = document.getElementById('si-lastseen');
+    // will get updated on next fetchStatus, but update display
+  }, 10000);
+</script>
+</body>
+</html>

@@ -15,11 +15,16 @@ const express = require('express')
 const cors = require('cors')
 const http = require('http')
 const https = require('https')
+const path = require('path')
 const { URL } = require('url')
 
 const app = express()
 app.use(cors())
 app.use(express.json())
+
+// Dashboard - serve static files
+app.use('/dashboard', express.static(path.join(__dirname, 'public')))
+app.get('/', (req, res) => res.redirect('/dashboard'))
 
 // Secret token to protect registration
 const REGISTER_TOKEN = process.env.REGISTER_TOKEN || 'phantom-secret-2025'
