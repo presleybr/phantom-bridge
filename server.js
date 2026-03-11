@@ -44,6 +44,7 @@ app.use(express.json({ limit: '5mb' }))
 app.use('/dashboard', express.static(path.join(__dirname, 'public')))
 app.use('/crm', express.static(path.join(__dirname, 'public', 'crm')))
 app.get('/crm', (req, res) => res.sendFile(path.join(__dirname, 'public', 'crm', 'index.html')))
+app.get('/crm/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'crm', 'index.html')))
 app.get('/', (req, res) => res.redirect('/dashboard'))
 
 // Secret token to protect registration
