@@ -40,9 +40,10 @@ const app = express()
 app.use(cors())
 app.use(express.json({ limit: '5mb' }))
 
-// Dashboard - serve static files
+// Dashboard & CRM - serve static files (MUST be before proxy fallback)
 app.use('/dashboard', express.static(path.join(__dirname, 'public')))
 app.use('/crm', express.static(path.join(__dirname, 'public', 'crm')))
+app.get('/crm', (req, res) => res.sendFile(path.join(__dirname, 'public', 'crm', 'index.html')))
 app.get('/', (req, res) => res.redirect('/dashboard'))
 
 // Secret token to protect registration
