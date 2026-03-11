@@ -1632,6 +1632,7 @@ body::before {
   .start-pinned-grid { grid-template-columns: repeat(3, 1fr); }
   .monitor-network { grid-template-columns: 1fr; }
 }
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 </style>
 </head>
 <body>
@@ -3487,148 +3488,289 @@ function sendMessage(windowBody) {
 
 /* Part 10: APP - AI Assistant */
 
-function initAI(windowBody) {
-  windowBody.innerHTML = '';
-  windowBody.classList.add('app-ai');
+function initAI(body) {
+  body.innerHTML = '';
+  body.classList.add('app-ai');
+  var sessionId = 'session-' + Date.now();
 
-  var chatArea = el('div', 'ai-chat');
-  chatArea.id = 'ai-chat';
+  var container = document.createElement('div');
+  container.style.cssText = 'display:flex;flex-direction:column;height:100%;';
 
-  var welcome = el('div', 'ai-msg ai-msg-bot');
-  welcome.innerHTML = '<div class="ai-bubble ai-bubble-bot">Welcome to PhantomOS AI Assistant. I can help you with:<br>' +
-    '- Check system status and health<br>' +
-    '- Manage files on Windows<br>' +
-    '- Control Photoshop remotely<br>' +
-    '- Run commands on Windows<br>' +
-    '- Ping and diagnose connection<br><br>' +
-    'Try asking: "check status" or "ping windows"</div>';
-  chatArea.appendChild(welcome);
-  windowBody.appendChild(chatArea);
+  /* Quick actions bar */
+  var quickBar = document.createElement('div');
+  quickBar.style.cssText = 'padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.06);display:flex;flex-wrap:wrap;gap:6px;';
 
-  var quickBtns = el('div', 'ai-quick-btns');
   var quickActions = [
-    { label: 'Status', cmd: 'check status' },
-    { label: 'Health', cmd: 'health check' },
-    { label: 'Ping', cmd: 'ping' },
-    { label: 'List Files', cmd: 'list files' }
+    { label: 'Status', cmd: 'status' },
+    { label: 'Processes', cmd: 'list processes' },
+    { label: 'Disk', cmd: 'disk info' },
+    { label: 'Memory', cmd: 'memory info' },
+    { label: 'CPU', cmd: 'cpu info' },
+    { label: 'Network', cmd: 'network info' },
+    { label: 'Photoshop', cmd: 'open photoshop' },
+    { label: 'Export PNG', cmd: 'export png' },
+    { label: 'Screenshot', cmd: 'screenshot' },
+    { label: 'Services', cmd: 'services status' },
+    { label: 'Files', cmd: 'list files' },
+    { label: 'Help', cmd: 'help' }
   ];
+
   quickActions.forEach(function(qa) {
-    var btn = el('button', 'ai-quick-btn');
+    var btn = document.createElement('button');
     btn.textContent = qa.label;
-    btn.addEventListener('click', function() {
-      processAIMessage(windowBody, qa.cmd);
-    });
-    quickBtns.appendChild(btn);
+    btn.style.cssText = 'padding:4px 10px;border-radius:99px;font-size:.68rem;font-weight:600;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:#94a3b8;cursor:pointer;transition:all .2s;';
+    btn.addEventListener('mouseenter', function() { btn.style.borderColor = '#6c63ff'; btn.style.color = '#6c63ff'; });
+    btn.addEventListener('mouseleave', function() { btn.style.borderColor = 'rgba(255,255,255,.1)'; btn.style.color = '#94a3b8'; });
+    btn.addEventListener('click', function() { sendAIMessage(qa.cmd); });
+    quickBar.appendChild(btn);
   });
-  windowBody.appendChild(quickBtns);
 
-  var inputRow = el('div', 'ai-input-row');
-  var aiInput = el('input', 'ai-input');
-  aiInput.type = 'text';
-  aiInput.placeholder = 'Ask me anything...';
-  aiInput.id = 'ai-input';
-  var sendBtn = el('button', 'ai-send-btn');
-  sendBtn.innerHTML = ICONS.send;
-  sendBtn.addEventListener('click', function() {
-    var val = aiInput.value.trim();
-    if (val) { processAIMessage(windowBody, val); aiInput.value = ''; }
+  /* Chat area */
+  var chatArea = document.createElement('div');
+  chatArea.style.cssText = 'flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px;';
+  chatArea.id = 'ai-chat-' + Date.now();
+
+  /* Welcome message */
+  addAIMessage(chatArea, {
+    role: 'assistant',
+    content: 'I am PhantomAI, your remote control assistant. I can control the Windows computer, manage Photoshop, check system status, and more. Type a command or use the quick actions above.',
+    type: 'text'
   });
-  aiInput.addEventListener('keydown', function(e) {
-    if (e.key === 'Enter') {
-      var val = aiInput.value.trim();
-      if (val) { processAIMessage(windowBody, val); aiInput.value = ''; }
-    }
-  });
-  inputRow.appendChild(aiInput);
+
+  /* Input area */
+  var inputRow = document.createElement('div');
+  inputRow.style.cssText = 'padding:12px;border-top:1px solid rgba(255,255,255,.06);display:flex;gap:8px;';
+
+  var input = document.createElement('input');
+  input.type = 'text';
+  input.placeholder = 'Type a command... (e.g. "check status", "open photoshop")';
+  input.style.cssText = 'flex:1;padding:10px 14px;background:#0e1116;border:1px solid rgba(255,255,255,.06);border-radius:8px;color:#e2e8f0;font-size:.82rem;outline:none;';
+  input.addEventListener('focus', function() { input.style.borderColor = '#6c63ff'; });
+  input.addEventListener('blur', function() { input.style.borderColor = 'rgba(255,255,255,.06)'; });
+  input.addEventListener('keydown', function(e) { if (e.key === 'Enter' && input.value.trim()) sendAIMessage(input.value.trim()); });
+
+  var sendBtn = document.createElement('button');
+  sendBtn.innerHTML = ICONS.send || 'Send';
+  sendBtn.style.cssText = 'padding:10px 16px;background:linear-gradient(135deg,#6c63ff,#5a52e0);border:none;border-radius:8px;color:#fff;cursor:pointer;display:flex;align-items:center;';
+  sendBtn.addEventListener('click', function() { if (input.value.trim()) sendAIMessage(input.value.trim()); });
+
+  inputRow.appendChild(input);
   inputRow.appendChild(sendBtn);
-  windowBody.appendChild(inputRow);
-}
 
-function addAIBubble(windowBody, text, isUser) {
-  var chat = windowBody.querySelector('#ai-chat');
-  if (!chat) return;
-  var msg = el('div', 'ai-msg ' + (isUser ? 'ai-msg-user' : 'ai-msg-bot'));
-  var bubble = el('div', 'ai-bubble ' + (isUser ? 'ai-bubble-user' : 'ai-bubble-bot'));
-  bubble.innerHTML = text;
-  msg.appendChild(bubble);
-  chat.appendChild(msg);
-  chat.scrollTop = chat.scrollHeight;
-}
+  container.appendChild(quickBar);
+  container.appendChild(chatArea);
+  container.appendChild(inputRow);
+  body.appendChild(container);
 
-function processAIMessage(windowBody, message) {
-  addAIBubble(windowBody, escapeHtml(message), true);
-  var lower = message.toLowerCase();
+  /* Send message function */
+  function sendAIMessage(msg) {
+    input.value = '';
+    addUserMessage(chatArea, msg);
 
-  if (lower.indexOf('status') >= 0) {
-    addAIBubble(windowBody, 'Checking system status...', false);
-    apiGet('/status').then(function(data) {
-      if (data) {
-        addAIBubble(windowBody, 'System Status:<br>Online: ' + (data.ok ? 'YES' : 'NO') +
-          '<br>Tunnel: ' + escapeHtml(data.tunnel || 'N/A') +
-          '<br>Last Seen: ' + escapeHtml(data.lastSeen || 'N/A'), false);
+    var loadingEl = document.createElement('div');
+    loadingEl.style.cssText = 'display:flex;align-items:center;gap:8px;padding:8px 12px;color:#64748b;font-size:.78rem;';
+    var spinner = document.createElement('div');
+    spinner.style.cssText = 'width:16px;height:16px;border:2px solid rgba(108,99,255,.3);border-top-color:#6c63ff;border-radius:50%;animation:spin .7s linear infinite;';
+    var loadText = document.createElement('span');
+    loadText.textContent = 'Processing...';
+    loadingEl.appendChild(spinner);
+    loadingEl.appendChild(loadText);
+    chatArea.appendChild(loadingEl);
+    chatArea.scrollTop = chatArea.scrollHeight;
+
+    fetch('/api/ai/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: msg, sessionId: sessionId })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (loadingEl.parentNode) loadingEl.parentNode.removeChild(loadingEl);
+      if (data.ok && data.response) {
+        addAIMessage(chatArea, data.response, data.needsConfirmation);
       } else {
-        addAIBubble(windowBody, 'Could not retrieve status. The bridge may be offline.', false);
+        addAIMessage(chatArea, { role: 'assistant', content: 'Error: ' + (data.error || 'Unknown error'), type: 'text' });
       }
+      chatArea.scrollTop = chatArea.scrollHeight;
+    })
+    .catch(function(err) {
+      if (loadingEl.parentNode) loadingEl.parentNode.removeChild(loadingEl);
+      addAIMessage(chatArea, { role: 'assistant', content: 'Connection error: ' + err.message, type: 'text' });
     });
-  } else if (lower.indexOf('health') >= 0) {
-    addAIBubble(windowBody, 'Running health check...', false);
-    apiGet('/health').then(function(data) {
-      if (data) {
-        addAIBubble(windowBody, 'Health Check:<br>OK: ' + (data.ok ? 'YES' : 'NO') +
-          '<br>Bridge: ' + escapeHtml(String(data.bridge || 'N/A')) +
-          '<br>Tunnel: ' + escapeHtml(String(data.tunnel || 'N/A')), false);
-      } else {
-        addAIBubble(windowBody, 'Health check failed.', false);
+  }
+
+  /* Render user message */
+  function addUserMessage(cont, text) {
+    var bubble = document.createElement('div');
+    bubble.style.cssText = 'align-self:flex-end;max-width:75%;padding:10px 14px;background:rgba(108,99,255,.15);border:1px solid rgba(108,99,255,.2);border-radius:12px 12px 2px 12px;font-size:.82rem;color:#e2e8f0;';
+    bubble.textContent = text;
+    cont.appendChild(bubble);
+    cont.scrollTop = cont.scrollHeight;
+  }
+
+  /* Render AI message */
+  function addAIMessage(cont, msg, needsConfirm) {
+    var wrapper = document.createElement('div');
+    wrapper.style.cssText = 'align-self:flex-start;max-width:85%;';
+
+    var bubble = document.createElement('div');
+    bubble.style.cssText = 'padding:12px 16px;background:#161920;border:1px solid rgba(255,255,255,.06);border-radius:2px 12px 12px 12px;font-size:.82rem;color:#e2e8f0;line-height:1.5;';
+
+    var textEl = document.createElement('div');
+    textEl.textContent = msg.content;
+    bubble.appendChild(textEl);
+
+    /* Action steps */
+    if (msg.actions && msg.actions.length > 0) {
+      var stepsEl = document.createElement('div');
+      stepsEl.style.cssText = 'margin-top:10px;display:flex;flex-direction:column;gap:6px;';
+
+      msg.actions.forEach(function(action) {
+        var step = document.createElement('div');
+        step.style.cssText = 'padding:8px 12px;background:rgba(0,0,0,.3);border-radius:6px;font-size:.75rem;display:flex;align-items:center;gap:8px;';
+
+        var statusIcon = document.createElement('span');
+        if (action.status === 'done') {
+          statusIcon.textContent = '[OK]';
+          statusIcon.style.color = '#00e676';
+        } else if (action.status === 'error') {
+          statusIcon.textContent = '[ERR]';
+          statusIcon.style.color = '#ff5252';
+        } else {
+          statusIcon.textContent = '[...]';
+          statusIcon.style.color = '#ffd740';
+        }
+        statusIcon.style.fontWeight = '700';
+        statusIcon.style.fontFamily = 'monospace';
+        statusIcon.style.fontSize = '.7rem';
+        statusIcon.style.flexShrink = '0';
+
+        var label = document.createElement('span');
+        label.textContent = action.label;
+        label.style.cssText = 'color:#94a3b8;flex:1;';
+
+        var duration = document.createElement('span');
+        duration.textContent = action.duration ? action.duration + 'ms' : '';
+        duration.style.cssText = 'color:#64748b;font-size:.65rem;';
+
+        step.appendChild(statusIcon);
+        step.appendChild(label);
+        step.appendChild(duration);
+
+        if (action.result || action.error) {
+          var resultData = action.error || (typeof action.result === 'string' ? action.result : JSON.stringify(action.result, null, 2));
+          var toggle = document.createElement('button');
+          toggle.textContent = 'Details';
+          toggle.style.cssText = 'background:none;border:1px solid rgba(255,255,255,.1);border-radius:4px;color:#64748b;font-size:.6rem;padding:2px 6px;cursor:pointer;';
+          var resultEl = document.createElement('pre');
+          resultEl.textContent = resultData;
+          resultEl.style.cssText = 'display:none;margin-top:6px;padding:8px;background:#0a0c10;border-radius:4px;font-size:.68rem;color:#94a3b8;overflow-x:auto;max-height:200px;white-space:pre-wrap;word-break:break-all;';
+          toggle.addEventListener('click', function() {
+            var pre = this.nextSibling || resultEl;
+            if (pre.tagName === 'PRE') {
+              pre.style.display = pre.style.display === 'none' ? 'block' : 'none';
+              this.textContent = pre.style.display === 'none' ? 'Details' : 'Hide';
+            }
+          });
+          step.appendChild(toggle);
+          stepsEl.appendChild(step);
+          stepsEl.appendChild(resultEl);
+        } else {
+          stepsEl.appendChild(step);
+        }
+      });
+
+      bubble.appendChild(stepsEl);
+    }
+
+    /* Help categories */
+    if (msg.type === 'help' && msg.data) {
+      var helpGrid = document.createElement('div');
+      helpGrid.style.cssText = 'margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:6px;';
+      for (var cat in msg.data) {
+        if (!msg.data.hasOwnProperty(cat)) continue;
+        var catEl = document.createElement('div');
+        catEl.style.cssText = 'padding:8px;background:rgba(0,0,0,.3);border-radius:6px;';
+        var catTitle = document.createElement('div');
+        catTitle.textContent = cat;
+        catTitle.style.cssText = 'font-size:.7rem;font-weight:700;color:#6c63ff;text-transform:uppercase;margin-bottom:4px;';
+        catEl.appendChild(catTitle);
+        if (Array.isArray(msg.data[cat])) {
+          msg.data[cat].forEach(function(item) {
+            var itemEl = document.createElement('div');
+            itemEl.textContent = item.examples ? item.examples.join(', ') : String(item);
+            itemEl.style.cssText = 'font-size:.65rem;color:#64748b;cursor:pointer;padding:2px 0;';
+            itemEl.addEventListener('click', function() {
+              var cmd = item.examples ? item.examples[0] : String(item);
+              sendAIMessage(cmd);
+            });
+            catEl.appendChild(itemEl);
+          });
+        }
+        helpGrid.appendChild(catEl);
       }
-    });
-  } else if (lower.indexOf('ping') >= 0) {
-    addAIBubble(windowBody, 'Pinging Windows server...', false);
-    apiPost('/api/ping').then(function(data) {
-      if (data && data.ok) {
-        addAIBubble(windowBody, 'Pong! Latency: ' + (data.latency || '?') + 'ms. Connection is healthy.', false);
-      } else {
-        addAIBubble(windowBody, 'Ping failed. Windows server may be unreachable.', false);
-      }
-    });
-  } else if (lower.indexOf('list files') >= 0 || lower.indexOf('files') >= 0) {
-    addAIBubble(windowBody, 'Listing files at ' + escapeHtml(state.filePath) + '...', false);
-    apiGet('/api/files?path=' + encodeURIComponent(state.filePath)).then(function(data) {
-      if (data && data.files) {
-        var list = data.files.slice(0, 15).map(function(f) {
-          return escapeHtml(f.name) + ' (' + (f.type === 'directory' ? 'folder' : formatBytes(f.size)) + ')';
-        }).join('<br>');
-        addAIBubble(windowBody, 'Files at ' + escapeHtml(state.filePath) + ':<br>' + list +
-          (data.files.length > 15 ? '<br>... and ' + (data.files.length - 15) + ' more' : ''), false);
-      } else {
-        addAIBubble(windowBody, 'Could not list files.', false);
-      }
-    });
-  } else if (lower.indexOf('open psd') >= 0 || lower.indexOf('photoshop') >= 0) {
-    var psdPath = 'C:\\Users\\Victor\\Documents\\lilika\\Arte_Feed.psd';
-    addAIBubble(windowBody, 'Opening PSD file...', false);
-    apiPost('/api/ai/execute', { command: 'open "' + psdPath + '"' }).then(function(data) {
-      addAIBubble(windowBody, 'Command sent to open PSD. Check the Photoshop app for status.', false);
-    });
-  } else if (lower.indexOf('screenshot') >= 0) {
-    addAIBubble(windowBody, 'Requesting screenshot...', false);
-    apiPost('/api/ai/execute', { command: 'screenshot' }).then(function(data) {
-      var result = data ? (data.result || data.message || 'Command sent') : 'Failed';
-      addAIBubble(windowBody, escapeHtml(String(result)), false);
-    });
-  } else if (lower.indexOf('restart') >= 0) {
-    addAIBubble(windowBody, 'Sending restart command...', false);
-    apiPost('/api/ai/execute', { command: 'restart' }).then(function(data) {
-      var result = data ? (data.result || data.message || 'Restart command sent') : 'Failed';
-      addAIBubble(windowBody, escapeHtml(String(result)), false);
-    });
-  } else if (lower.indexOf('export') >= 0) {
-    addAIBubble(windowBody, 'Sending export command...', false);
-    apiPost('/api/ai/execute', { command: 'export' }).then(function(data) {
-      var result = data ? (data.result || data.message || 'Export command sent') : 'Failed';
-      addAIBubble(windowBody, escapeHtml(String(result)), false);
-    });
-  } else {
-    addAIBubble(windowBody, 'I can help you with: checking system status, managing files, controlling Photoshop, running commands, and diagnosing connections. Try asking me to "check status", "ping", "list files", or "open psd".', false);
+      bubble.appendChild(helpGrid);
+    }
+
+    /* Confirmation buttons */
+    if (needsConfirm) {
+      var confirmRow = document.createElement('div');
+      confirmRow.style.cssText = 'margin-top:10px;display:flex;gap:8px;';
+
+      var confirmBtn = document.createElement('button');
+      confirmBtn.textContent = 'Confirm';
+      confirmBtn.style.cssText = 'padding:6px 16px;background:rgba(0,230,118,.15);border:1px solid rgba(0,230,118,.3);border-radius:6px;color:#00e676;font-size:.75rem;font-weight:600;cursor:pointer;';
+      confirmBtn.addEventListener('click', function() {
+        confirmRow.parentNode.removeChild(confirmRow);
+        var loadEl = document.createElement('div');
+        loadEl.style.cssText = 'display:flex;align-items:center;gap:8px;padding:8px;color:#64748b;font-size:.75rem;';
+        var cSpinner = document.createElement('div');
+        cSpinner.style.cssText = 'width:14px;height:14px;border:2px solid rgba(108,99,255,.3);border-top-color:#6c63ff;border-radius:50%;animation:spin .7s linear infinite;';
+        var cText = document.createElement('span');
+        cText.textContent = 'Executing...';
+        loadEl.appendChild(cSpinner);
+        loadEl.appendChild(cText);
+        cont.appendChild(loadEl);
+
+        fetch('/api/ai/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: msg.content.split('.')[0], sessionId: sessionId, confirmed: true })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (loadEl.parentNode) loadEl.parentNode.removeChild(loadEl);
+          if (data.ok && data.response) addAIMessage(cont, data.response);
+          cont.scrollTop = cont.scrollHeight;
+        })
+        .catch(function(err) {
+          if (loadEl.parentNode) loadEl.parentNode.removeChild(loadEl);
+          addAIMessage(cont, { role: 'assistant', content: 'Error: ' + err.message, type: 'text' });
+        });
+      });
+
+      var cancelBtn = document.createElement('button');
+      cancelBtn.textContent = 'Cancel';
+      cancelBtn.style.cssText = 'padding:6px 16px;background:rgba(255,82,82,.1);border:1px solid rgba(255,82,82,.3);border-radius:6px;color:#ff5252;font-size:.75rem;font-weight:600;cursor:pointer;';
+      cancelBtn.addEventListener('click', function() {
+        confirmRow.parentNode.removeChild(confirmRow);
+        addAIMessage(cont, { role: 'assistant', content: 'Action cancelled.', type: 'text' });
+      });
+
+      confirmRow.appendChild(confirmBtn);
+      confirmRow.appendChild(cancelBtn);
+      bubble.appendChild(confirmRow);
+    }
+
+    /* Timestamp */
+    var ts = document.createElement('div');
+    ts.textContent = new Date().toLocaleTimeString();
+    ts.style.cssText = 'font-size:.6rem;color:#4a5568;margin-top:6px;';
+    bubble.appendChild(ts);
+
+    wrapper.appendChild(bubble);
+    cont.appendChild(wrapper);
+    cont.scrollTop = cont.scrollHeight;
   }
 }
 
