@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PhantomOS - Controle Remoto Inteligente</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #06060b;
+      --bg-card: #0d0d15;
+      --border: #1a1a2e;
+      --cyan: #00d4ff;
+      --purple: #7b68ee;
+      --pink: #e040fb;
+      --text: #e8e8f0;
+      --text-muted: #6b6b80;
+      --gradient: linear-gradient(135deg, #00d4ff, #7b68ee);
+      --gradient-pink: linear-gradient(135deg, #7b68ee, #e040fb);
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', -apple-system, sans-serif;
+      overflow-x: hidden;
+      line-height: 1.6;
+    }
+
+    /* Ambient background */
+    .bg-glow {
+      position: fixed;
+      top: -200px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 800px;
+      height: 800px;
+      background: radial-gradient(circle, rgba(0,212,255,.06) 0%, rgba(123,104,238,.03) 40%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Nav */
+    nav {
+      position: fixed;
+      top: 0;
+      width: 100%;
+      z-index: 100;
+      background: rgba(6,6,11,.85);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 2rem;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .nav-logo {
+      font-size: 1.4rem;
+      font-weight: 800;
+      color: var(--cyan);
+      text-decoration: none;
+      letter-spacing: 1px;
+    }
+    .nav-logo span { color: var(--purple); }
+    .nav-links { display: flex; gap: 2rem; align-items: center; }
+    .nav-links a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: .9rem;
+      font-weight: 500;
+      transition: color .2s;
+    }
+    .nav-links a:hover { color: var(--text); }
+    .nav-btn {
+      background: var(--gradient);
+      color: #fff;
+      padding: 8px 20px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: .85rem;
+      text-decoration: none;
+      transition: transform .2s, box-shadow .2s;
+    }
+    .nav-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 16px rgba(0,212,255,.3);
+    }
+
+    /* Hero */
+    .hero {
+      padding: 160px 2rem 100px;
+      text-align: center;
+      position: relative;
+      z-index: 1;
+    }
+    .hero-badge {
+      display: inline-block;
+      padding: 6px 16px;
+      background: rgba(0,212,255,.08);
+      border: 1px solid rgba(0,212,255,.2);
+      border-radius: 20px;
+      color: var(--cyan);
+      font-size: .8rem;
+      font-weight: 600;
+      margin-bottom: 1.5rem;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+    .hero h1 {
+      font-size: clamp(2.5rem, 6vw, 4.5rem);
+      font-weight: 900;
+      line-height: 1.1;
+      margin-bottom: 1.5rem;
+      background: linear-gradient(135deg, #fff 0%, #00d4ff 50%, #7b68ee 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero p {
+      font-size: 1.2rem;
+      color: var(--text-muted);
+      max-width: 600px;
+      margin: 0 auto 2.5rem;
+      line-height: 1.7;
+    }
+    .hero-btns {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 14px 32px;
+      background: var(--gradient);
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      transition: transform .2s, box-shadow .2s;
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(0,212,255,.35);
+    }
+    .btn-secondary {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 14px 32px;
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: 500;
+      cursor: pointer;
+      text-decoration: none;
+      transition: border-color .2s, background .2s;
+    }
+    .btn-secondary:hover {
+      border-color: var(--cyan);
+      background: rgba(0,212,255,.05);
+    }
+
+    /* Hero mockup */
+    .hero-mockup {
+      max-width: 900px;
+      margin: 4rem auto 0;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      overflow: hidden;
+      box-shadow: 0 20px 80px rgba(0,0,0,.5), 0 0 60px rgba(0,212,255,.05);
+    }
+    .mockup-bar {
+      height: 36px;
+      background: #0a0a14;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 14px;
+      gap: 8px;
+    }
+    .mockup-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .mockup-dot:nth-child(1) { background: #ff5f57; }
+    .mockup-dot:nth-child(2) { background: #febc2e; }
+    .mockup-dot:nth-child(3) { background: #28c840; }
+    .mockup-body {
+      padding: 2rem;
+      display: grid;
+      grid-template-columns: 200px 1fr;
+      gap: 1.5rem;
+      min-height: 300px;
+    }
+    .mockup-sidebar {
+      border-right: 1px solid var(--border);
+      padding-right: 1.5rem;
+    }
+    .mockup-sidebar-item {
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: .8rem;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .mockup-sidebar-item.active {
+      background: rgba(0,212,255,.1);
+      color: var(--cyan);
+    }
+    .mockup-sidebar-item .icon { font-size: 1rem; }
+    .mockup-content {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+      align-content: start;
+    }
+    .mockup-stat {
+      background: rgba(255,255,255,.03);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem;
+    }
+    .mockup-stat-label { font-size: .7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
+    .mockup-stat-value { font-size: 1.5rem; font-weight: 700; color: var(--cyan); margin-top: .25rem; }
+    .mockup-stat-sub { font-size: .7rem; color: #28c840; margin-top: .25rem; }
+    .mockup-terminal {
+      grid-column: 1 / -1;
+      background: #0a0a12;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem;
+      font-family: 'Consolas', 'Courier New', monospace;
+      font-size: .8rem;
+    }
+    .mockup-terminal .prompt { color: var(--cyan); }
+    .mockup-terminal .output { color: var(--text-muted); }
+
+    /* Features */
+    .section {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 100px 2rem;
+      position: relative;
+      z-index: 1;
+    }
+    .section-label {
+      color: var(--purple);
+      font-size: .8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-bottom: .75rem;
+    }
+    .section-title {
+      font-size: clamp(1.8rem, 3.5vw, 2.8rem);
+      font-weight: 800;
+      margin-bottom: 1rem;
+      line-height: 1.2;
+    }
+    .section-subtitle {
+      color: var(--text-muted);
+      font-size: 1.1rem;
+      max-width: 600px;
+      margin-bottom: 3rem;
+    }
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.5rem;
+    }
+    .feature-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 2rem;
+      transition: border-color .3s, transform .3s;
+    }
+    .feature-card:hover {
+      border-color: rgba(0,212,255,.3);
+      transform: translateY(-4px);
+    }
+    .feature-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+      margin-bottom: 1rem;
+    }
+    .feature-icon.cyan { background: rgba(0,212,255,.1); }
+    .feature-icon.purple { background: rgba(123,104,238,.1); }
+    .feature-icon.pink { background: rgba(224,64,251,.1); }
+    .feature-icon.green { background: rgba(40,200,64,.1); }
+    .feature-card h3 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: .5rem;
+    }
+    .feature-card p {
+      color: var(--text-muted);
+      font-size: .9rem;
+      line-height: 1.6;
+    }
+
+    /* How it works */
+    .steps-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 2rem;
+      margin-top: 3rem;
+    }
+    .step-card {
+      text-align: center;
+      position: relative;
+    }
+    .step-num {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: var(--gradient);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+      font-weight: 800;
+      margin: 0 auto 1rem;
+    }
+    .step-card h3 {
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: .5rem;
+    }
+    .step-card p {
+      color: var(--text-muted);
+      font-size: .85rem;
+    }
+
+    /* CTA */
+    .cta {
+      text-align: center;
+      padding: 80px 2rem;
+      position: relative;
+      z-index: 1;
+    }
+    .cta-box {
+      max-width: 700px;
+      margin: 0 auto;
+      padding: 3rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      position: relative;
+      overflow: hidden;
+    }
+    .cta-box::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: var(--gradient);
+    }
+    .cta-box h2 {
+      font-size: 2rem;
+      font-weight: 800;
+      margin-bottom: .75rem;
+    }
+    .cta-box p {
+      color: var(--text-muted);
+      margin-bottom: 2rem;
+      font-size: 1.05rem;
+    }
+
+    /* Footer */
+    footer {
+      text-align: center;
+      padding: 2rem;
+      color: var(--text-muted);
+      font-size: .8rem;
+      border-top: 1px solid var(--border);
+      position: relative;
+      z-index: 1;
+    }
+    footer a { color: var(--cyan); text-decoration: none; }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .nav-links { display: none; }
+      .mockup-body { grid-template-columns: 1fr; }
+      .mockup-sidebar { display: none; }
+      .mockup-content { grid-template-columns: repeat(2, 1fr); }
+      .features-grid { grid-template-columns: 1fr; }
+    }
+
+    /* Animations */
+    .fade-in {
+      opacity: 0;
+      transform: translateY(30px);
+      transition: opacity .6s ease, transform .6s ease;
+    }
+    .fade-in.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-glow"></div>
+
+  <!-- Nav -->
+  <nav>
+    <div class="nav-inner">
+      <a href="/" class="nav-logo">Phantom<span>OS</span></a>
+      <div class="nav-links">
+        <a href="#features">Recursos</a>
+        <a href="#how-it-works">Como Funciona</a>
+        <a href="#download">Download</a>
+        <a href="/dashboard" class="nav-btn">Dashboard</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="hero-badge">Acesso remoto de nova geracao</div>
+    <h1>Controle qualquer PC<br>pelo navegador</h1>
+    <p>PhantomOS transforma seu browser em um sistema operacional remoto. Terminal, arquivos, processos e automacao — tudo em uma interface unica.</p>
+    <div class="hero-btns">
+      <a href="#download" class="btn-primary">
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+        Download Gratis
+      </a>
+      <a href="/dashboard" class="btn-secondary">
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>
+        Abrir Dashboard
+      </a>
+    </div>
+
+    <!-- Mockup -->
+    <div class="hero-mockup fade-in">
+      <div class="mockup-bar">
+        <div class="mockup-dot"></div>
+        <div class="mockup-dot"></div>
+        <div class="mockup-dot"></div>
+      </div>
+      <div class="mockup-body">
+        <div class="mockup-sidebar">
+          <div class="mockup-sidebar-item active"><span class="icon">&#9678;</span> Dashboard</div>
+          <div class="mockup-sidebar-item"><span class="icon">&#9002;</span> Terminal</div>
+          <div class="mockup-sidebar-item"><span class="icon">&#128193;</span> Arquivos</div>
+          <div class="mockup-sidebar-item"><span class="icon">&#9881;</span> Processos</div>
+          <div class="mockup-sidebar-item"><span class="icon">&#128172;</span> Mensagens</div>
+          <div class="mockup-sidebar-item"><span class="icon">&#9881;</span> Config</div>
+        </div>
+        <div class="mockup-content">
+          <div class="mockup-stat">
+            <div class="mockup-stat-label">Agentes Online</div>
+            <div class="mockup-stat-value">12</div>
+            <div class="mockup-stat-sub">+3 hoje</div>
+          </div>
+          <div class="mockup-stat">
+            <div class="mockup-stat-label">Comandos/Hora</div>
+            <div class="mockup-stat-value">847</div>
+            <div class="mockup-stat-sub">99.8% sucesso</div>
+          </div>
+          <div class="mockup-stat">
+            <div class="mockup-stat-label">Latencia Media</div>
+            <div class="mockup-stat-value">42ms</div>
+            <div class="mockup-stat-sub">&#9660; 12ms</div>
+          </div>
+          <div class="mockup-terminal">
+            <div><span class="prompt">phantom@office-pc:~$</span> systeminfo | findstr /B "OS"</div>
+            <div class="output">OS Name: Microsoft Windows 11 Pro</div>
+            <div class="output">OS Version: 10.0.22631</div>
+            <div style="margin-top:8px"><span class="prompt">phantom@office-pc:~$</span> <span style="border-right:2px solid var(--cyan);padding-right:2px;animation:blink 1s infinite">_</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section class="section" id="features">
+    <div class="section-label fade-in">Recursos</div>
+    <h2 class="section-title fade-in">Tudo que voce precisa para<br>controle remoto profissional</h2>
+    <p class="section-subtitle fade-in">Uma plataforma completa que substitui TeamViewer, AnyDesk e SSH — com uma interface moderna e sem limites.</p>
+
+    <div class="features-grid">
+      <div class="feature-card fade-in">
+        <div class="feature-icon cyan">&#9002;</div>
+        <h3>Terminal Remoto</h3>
+        <p>Execute comandos em tempo real no PC remoto. PowerShell, CMD, scripts — como se estivesse na frente da maquina.</p>
+      </div>
+      <div class="feature-card fade-in">
+        <div class="feature-icon purple">&#128193;</div>
+        <h3>Gerenciador de Arquivos</h3>
+        <p>Navegue, visualize e gerencie arquivos remotamente. Veja tamanhos, datas e estrutura de pastas completa.</p>
+      </div>
+      <div class="feature-card fade-in">
+        <div class="feature-icon pink">&#128373;</div>
+        <h3>Multi-Tenant</h3>
+        <p>Conecte dezenas de PCs simultaneamente. Cada agente com seu proprio estado, historico e metricas isolados.</p>
+      </div>
+      <div class="feature-card fade-in">
+        <div class="feature-icon green">&#9889;</div>
+        <h3>Zero Configuracao</h3>
+        <p>Cliente baixa o .exe, digita um codigo de 8 caracteres e esta conectado. Sem instalar Node.js, Python ou dependencias.</p>
+      </div>
+      <div class="feature-card fade-in">
+        <div class="feature-icon cyan">&#128274;</div>
+        <h3>Tunnel Seguro</h3>
+        <p>Conexao via Cloudflare Tunnel com HTTPS automatico. Sem abrir portas, sem IP publico, sem VPN.</p>
+      </div>
+      <div class="feature-card fade-in">
+        <div class="feature-icon purple">&#129302;</div>
+        <h3>AI Assistant</h3>
+        <p>Assistente com IA integrado que entende linguagem natural. Diga "mostre o uso de disco" e ele executa o comando certo.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- How it works -->
+  <section class="section" id="how-it-works">
+    <div style="text-align:center;">
+      <div class="section-label fade-in">Como Funciona</div>
+      <h2 class="section-title fade-in" style="max-width:600px;margin:0 auto 1rem;">Conecte um PC em 3 passos</h2>
+      <p class="section-subtitle fade-in" style="margin:0 auto 3rem;">Do download a conexao completa em menos de 2 minutos.</p>
+    </div>
+
+    <div class="steps-grid">
+      <div class="step-card fade-in">
+        <div class="step-num">1</div>
+        <h3>Download</h3>
+        <p>Baixe o PhantomAgent.exe — um unico arquivo de 36MB, sem instalacao complexa.</p>
+      </div>
+      <div class="step-card fade-in">
+        <div class="step-num">2</div>
+        <h3>Codigo de Setup</h3>
+        <p>Execute o .exe e digite o codigo fornecido pelo admin. Ele configura tudo automaticamente.</p>
+      </div>
+      <div class="step-card fade-in">
+        <div class="step-num">3</div>
+        <h3>Conectado</h3>
+        <p>O agente se conecta ao PhantomBridge e aparece no dashboard. Controle total via navegador.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Download CTA -->
+  <section class="cta" id="download">
+    <div class="cta-box fade-in">
+      <h2>Comece agora</h2>
+      <p>Baixe o PhantomAgent e conecte seu primeiro PC em minutos.</p>
+      <a href="/agent/dist/PhantomAgent.exe" class="btn-primary" download>
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+        Download PhantomAgent.exe
+      </a>
+      <p style="color:var(--text-muted);font-size:.8rem;margin-top:1.5rem;">Windows 10/11 &bull; 36MB &bull; Zero dependencias</p>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <p>PhantomOS &copy; 2025 &mdash; Desenvolvido por <a href="/dashboard">Nexus Automacoes</a></p>
+  </footer>
+
+  <script>
+    // Scroll reveal
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          e.target.classList.add('visible')
+          observer.unobserve(e.target)
+        }
+      })
+    }, { threshold: 0.1 })
+    document.querySelectorAll('.fade-in').forEach(el => observer.observe(el))
+
+    // Smooth scroll
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+      a.addEventListener('click', e => {
+        e.preventDefault()
+        document.querySelector(a.getAttribute('href'))?.scrollIntoView({ behavior: 'smooth' })
+      })
+    })
+  </script>
+</body>
+</html>
