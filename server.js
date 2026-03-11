@@ -39,6 +39,12 @@ const https = require('https')
 const path = require('path')
 const { URL } = require('url')
 const crypto = require('crypto')
+const jwt = require('jsonwebtoken')
+const bcrypt = require('bcrypt')
+const { Pool } = require('pg')
+
+const pool = new Pool({ connectionString: process.env.DATABASE_URL })
+const JWT_SECRET = process.env.JWT_SECRET || 'phantomos-secret-change-in-prod'
 
 const app = express()
 app.use(cors())
@@ -50,6 +56,8 @@ app.use('/crm', express.static(path.join(__dirname, 'public', 'crm')))
 app.get('/crm', (req, res) => res.sendFile(path.join(__dirname, 'public', 'crm', 'index.html')))
 app.get('/crm/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'crm', 'index.html')))
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'landing.html')))
+app.get('/platform', (req, res) => res.sendFile(path.join(__dirname, 'public', 'platform.html')))
+app.get('/app', (req, res) => res.sendFile(path.join(__dirname, 'public', 'app.html')))
 
 // Agent download - serve agent files for Windows clients
 app.use('/agent', express.static(path.join(__dirname, 'agent')))
@@ -1606,6 +1614,463 @@ app.get('/api/ai/session/:id', (req, res) => {
   if (!session) return res.status(404).json({ error: 'Session not found' })
   res.json({ ok: true, session })
 })
+
+// ============================================================
+// PLATFORM: Auth middleware
+// ============================================================
+
+const platformAuth = async (req, res, next) => {
+  const token = req.headers.authorization?.replace('Bearer ', '') || req.cookies?.token;
+  if (!token) return res.status(401).json({ error: 'Não autenticado' });
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const { rows } = await pool.query('SELECT * FROM tenants WHERE id = $1', [decoded.tenantId]);
+    if (!rows[0]) return res.status(401).json({ error: 'Token inválido' });
+    req.tenant = rows[0];
+    next();
+  } catch(e) {
+    res.status(401).json({ error: 'Token inválido' });
+  }
+};
+
+const usage = (appId, cost = 1) => async (req, res, next) => {
+  if (req.tenant) {
+    const { executions_used, executions_limit } = req.tenant;
+    if (executions_used >= executions_limit) {
+      return res.status(429).json({ error: 'Limite de execuções atingido', upgrade: true });
+    }
+    await pool.query('UPDATE tenants SET executions_used = executions_used + $1 WHERE id = $2', [cost, req.tenant.id]);
+    await pool.query('INSERT INTO usage_log (tenant_id, app_id, action, cost) VALUES ($1,$2,$3,$4)', [req.tenant.id, appId, req.path, cost]);
+  }
+  next();
+};
+
+// ============================================================
+// PLATFORM: Auth routes
+// ============================================================
+
+app.post('/api/platform/register', async (req, res) => {
+  const { name, email, password } = req.body;
+  if (!name || !email || !password) return res.status(400).json({ error: 'Campos obrigatórios' });
+  try {
+    const hash = await bcrypt.hash(password, 10);
+    const slug = email.split('@')[0].replace(/[^a-z0-9]/g, '') + '-' + Date.now().toString(36);
+    const { rows } = await pool.query(
+      `INSERT INTO tenants (name, slug, email, password, plan, executions_limit)
+       VALUES ($1,$2,$3,$4,'free',50) RETURNING id, name, email, plan, slug`,
+      [name, slug, email, hash]
+    );
+    const token = jwt.sign({ tenantId: rows[0].id }, JWT_SECRET, { expiresIn: '30d' });
+    const defaultApps = ['social-studio', 'arte-ia', 'marketplace'];
+    for (const appId of defaultApps) {
+      await pool.query('INSERT INTO tenant_apps (tenant_id, app_id) VALUES ($1,$2) ON CONFLICT DO NOTHING', [rows[0].id, appId]);
+    }
+    res.json({ token, tenant: rows[0] });
+  } catch(e) {
+    if (e.code === '23505') return res.status(400).json({ error: 'Email já cadastrado' });
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/platform/login', async (req, res) => {
+  const { email, password } = req.body;
+  try {
+    const { rows } = await pool.query('SELECT * FROM tenants WHERE email = $1', [email]);
+    if (!rows[0]) return res.status(401).json({ error: 'Credenciais inválidas' });
+    const ok = await bcrypt.compare(password, rows[0].password);
+    if (!ok) return res.status(401).json({ error: 'Credenciais inválidas' });
+    const token = jwt.sign({ tenantId: rows[0].id }, JWT_SECRET, { expiresIn: '30d' });
+    const { password: _, ...tenant } = rows[0];
+    res.json({ token, tenant });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/platform/me', platformAuth, async (req, res) => {
+  const { password: _, ...tenant } = req.tenant;
+  const { rows: apps } = await pool.query('SELECT app_id, installed_at, config FROM tenant_apps WHERE tenant_id = $1', [req.tenant.id]);
+  res.json({ tenant, apps: apps.map(a => a.app_id) });
+});
+
+// ============================================================
+// PLATFORM: Marketplace
+// ============================================================
+
+app.get('/api/marketplace/apps', async (req, res) => {
+  const { category, search, sort = 'installs' } = req.query;
+  let q = `SELECT id, slug, name, description, category, icon, price, price_type, installs, rating, version, screenshots FROM marketplace_apps WHERE status = 'approved'`;
+  const params = [];
+  if (category) { params.push(category); q += ` AND category = $${params.length}`; }
+  if (search) { params.push(`%${search}%`); q += ` AND (name ILIKE $${params.length} OR description ILIKE $${params.length})`; }
+  q += ` ORDER BY ${sort === 'rating' ? 'rating' : sort === 'new' ? 'created_at' : 'installs'} DESC LIMIT 50`;
+  const { rows } = await pool.query(q, params);
+  res.json({ apps: rows });
+});
+
+app.get('/api/marketplace/apps/:slug', async (req, res) => {
+  const { rows } = await pool.query(
+    `SELECT m.*, t.name as developer_name,
+     (SELECT json_agg(r.*) FROM marketplace_reviews r WHERE r.app_id = m.id LIMIT 10) as reviews
+     FROM marketplace_apps m LEFT JOIN tenants t ON t.id = m.developer_id WHERE m.slug = $1`,
+    [req.params.slug]
+  );
+  if (!rows[0]) return res.status(404).json({ error: 'App não encontrado' });
+  res.json(rows[0]);
+});
+
+app.post('/api/marketplace/install/:slug', platformAuth, async (req, res) => {
+  const { rows: [app] } = await pool.query('SELECT * FROM marketplace_apps WHERE slug = $1 AND status = $2', [req.params.slug, 'approved']);
+  if (!app) return res.status(404).json({ error: 'App não encontrado' });
+  await pool.query('INSERT INTO tenant_apps (tenant_id, app_id) VALUES ($1,$2) ON CONFLICT DO NOTHING', [req.tenant.id, app.slug]);
+  await pool.query('UPDATE marketplace_apps SET installs = installs + 1 WHERE id = $1', [app.id]);
+  res.json({ success: true, message: `${app.name} instalado!` });
+});
+
+app.post('/api/marketplace/publish', platformAuth, async (req, res) => {
+  const { name, description, long_description, category, icon, price, price_type, manifest } = req.body;
+  if (!name || !description || !category) return res.status(400).json({ error: 'Campos obrigatórios' });
+  const slug = name.toLowerCase().replace(/[^a-z0-9]/g, '-') + '-' + Date.now().toString(36);
+  const { rows } = await pool.query(
+    `INSERT INTO marketplace_apps (developer_id, slug, name, description, long_description, category, icon, price, price_type, manifest, status)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'pending') RETURNING *`,
+    [req.tenant.id, slug, name, description, long_description, category, icon||'🔧', price||0, price_type||'free', JSON.stringify(manifest||{})]
+  );
+  res.json({ app: rows[0], message: 'App enviado para revisão!' });
+});
+
+app.post('/api/marketplace/review/:appId', platformAuth, async (req, res) => {
+  const { rating, comment } = req.body;
+  if (!rating || rating < 1 || rating > 5) return res.status(400).json({ error: 'Rating inválido' });
+  await pool.query(
+    `INSERT INTO marketplace_reviews (app_id, tenant_id, rating, comment) VALUES ($1,$2,$3,$4)
+     ON CONFLICT (app_id, tenant_id) DO UPDATE SET rating=$3, comment=$4`,
+    [req.params.appId, req.tenant.id, rating, comment]
+  );
+  await pool.query('UPDATE marketplace_apps SET rating = (SELECT AVG(rating) FROM marketplace_reviews WHERE app_id=$1) WHERE id=$1', [req.params.appId]);
+  res.json({ success: true });
+});
+
+// ============================================================
+// PLATFORM: Social Studio
+// ============================================================
+
+app.get('/api/social/accounts', platformAuth, async (req, res) => {
+  const { rows } = await pool.query('SELECT id, platform, username, status, created_at FROM social_accounts WHERE tenant_id = $1', [req.tenant.id]);
+  res.json({ accounts: rows });
+});
+
+app.post('/api/social/accounts', platformAuth, async (req, res) => {
+  const { platform, username } = req.body;
+  const { rows } = await pool.query(
+    `INSERT INTO social_accounts (tenant_id, platform, username, status) VALUES ($1,$2,$3,'active') RETURNING id, platform, username, status`,
+    [req.tenant.id, platform, username]
+  );
+  res.json({ account: rows[0] });
+});
+
+app.get('/api/social/posts', platformAuth, async (req, res) => {
+  const { status, limit = 50 } = req.query;
+  let q = 'SELECT * FROM social_posts WHERE tenant_id = $1';
+  const params = [req.tenant.id];
+  if (status) { params.push(status); q += ` AND status = $${params.length}`; }
+  q += ' ORDER BY created_at DESC LIMIT $' + (params.length + 1);
+  params.push(parseInt(limit));
+  const { rows } = await pool.query(q, params);
+  res.json({ posts: rows });
+});
+
+app.post('/api/social/posts', platformAuth, usage('social-studio'), async (req, res) => {
+  const { content, platforms, scheduled_at, pillar, media_urls } = req.body;
+  const { rows } = await pool.query(
+    `INSERT INTO social_posts (tenant_id, content, platforms, scheduled_at, pillar, media_urls, status)
+     VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+    [req.tenant.id, content, JSON.stringify(platforms||[]), scheduled_at||null,
+     pillar||null, JSON.stringify(media_urls||[]), scheduled_at ? 'scheduled' : 'draft']
+  );
+  res.json({ post: rows[0] });
+});
+
+app.post('/api/social/generate', platformAuth, usage('social-studio', 2), async (req, res) => {
+  const { pillar, niche, topic, style } = req.body;
+  const systemPrompt = `Você é um especialista em marketing digital para pequenos negócios brasileiros.
+Gere conteúdo para redes sociais que engaja e converte.
+Pilares disponíveis: Educação, Emoção, Dica Rápida, Autoridade, Serviços.
+Retorne APENAS JSON válido com: caption (legenda), hashtags (array), cta (call to action).`;
+  try {
+    const aiRes = await callGroqAI(systemPrompt, `Nicho: ${niche||'negócio local'}\nPilar: ${pillar||'Dica Rápida'}\nTema: ${topic||'dica do dia'}\nEstilo: ${style||'profissional e próximo'}`, 500);
+    const text = aiRes.replace(/```json|```/g, '').trim();
+    res.json(JSON.parse(text));
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.delete('/api/social/posts/:id', platformAuth, async (req, res) => {
+  await pool.query('DELETE FROM social_posts WHERE id=$1 AND tenant_id=$2', [req.params.id, req.tenant.id]);
+  res.json({ success: true });
+});
+
+// ============================================================
+// PLATFORM: Arte IA
+// ============================================================
+
+app.post('/api/arte/generate', platformAuth, usage('arte-ia', 3), async (req, res) => {
+  const { pillar, niche, topic, headline, subtext } = req.body;
+  const pillarColors = {
+    'Educação':    { bg: '#1B4F72', accent: '#A8E6CF', text: '#FFFFFF' },
+    'Emoção':      { bg: '#8B1A1A', accent: '#FFAB91', text: '#FFFFFF' },
+    'Dica Rápida': { bg: '#2D1B69', accent: '#B39DDB', text: '#FFFFFF' },
+    'Autoridade':  { bg: '#1A1A2E', accent: '#FFD700', text: '#FFFFFF' },
+    'Serviços':    { bg: '#004D3D', accent: '#80CBC4', text: '#FFFFFF' },
+  };
+  const colors = pillarColors[pillar] || pillarColors['Dica Rápida'];
+  try {
+    const html = await callGroqAI(
+      `Você gera HTML/CSS para posts de Instagram (1080x1350px). Retorne APENAS o HTML completo sem explicações. Design moderno, tipografia bold, visual impactante. Use as cores exatas fornecidas. Nunca use imagens externas — só gradientes e formas CSS.`,
+      `Crie um post Instagram para:\nNicho: ${niche}\nPilar: ${pillar}\nTítulo: ${headline}\nSubtexto: ${subtext}\nCor fundo: ${colors.bg}\nCor destaque: ${colors.accent}\nTamanho: 1080x1350px\nInclua o handle @${req.tenant.slug} no rodapé.`,
+      2000
+    );
+    const { rows } = await pool.query(
+      `INSERT INTO generated_arts (tenant_id, prompt, html_source, pillar, niche, status) VALUES ($1,$2,$3,$4,$5,'generated') RETURNING id`,
+      [req.tenant.id, JSON.stringify({pillar, niche, headline, subtext}), html, pillar, niche]
+    );
+    res.json({ id: rows[0].id, html, colors });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/arte/history', platformAuth, async (req, res) => {
+  const { rows } = await pool.query(
+    'SELECT id, pillar, niche, status, approved, created_at FROM generated_arts WHERE tenant_id=$1 ORDER BY created_at DESC LIMIT 30',
+    [req.tenant.id]
+  );
+  res.json({ arts: rows });
+});
+
+app.patch('/api/arte/:id/approve', platformAuth, async (req, res) => {
+  await pool.query('UPDATE generated_arts SET approved=true WHERE id=$1 AND tenant_id=$2', [req.params.id, req.tenant.id]);
+  res.json({ success: true });
+});
+
+// ============================================================
+// PLATFORM: WhatsApp CRM
+// ============================================================
+
+app.get('/api/wa/conversations', platformAuth, async (req, res) => {
+  const { rows } = await pool.query(
+    `SELECT c.*, (SELECT COUNT(*) FROM wa_messages m WHERE m.conversation_id=c.id AND m.read=false AND m.direction='in') as unread
+     FROM wa_conversations c WHERE c.tenant_id=$1 ORDER BY c.last_message_at DESC NULLS LAST`,
+    [req.tenant.id]
+  );
+  res.json({ conversations: rows });
+});
+
+app.get('/api/wa/conversations/:id/messages', platformAuth, async (req, res) => {
+  const { rows } = await pool.query('SELECT * FROM wa_messages WHERE conversation_id=$1 ORDER BY created_at ASC LIMIT 100', [req.params.id]);
+  await pool.query(`UPDATE wa_messages SET read=true WHERE conversation_id=$1 AND direction='in' AND read=false`, [req.params.id]);
+  res.json({ messages: rows });
+});
+
+app.post('/api/wa/conversations/:id/send', platformAuth, usage('whatsapp-crm'), async (req, res) => {
+  const { content, ai_generated = false } = req.body;
+  const { rows } = await pool.query(
+    `INSERT INTO wa_messages (conversation_id, tenant_id, direction, content, ai_generated) VALUES ($1,$2,'out',$3,$4) RETURNING *`,
+    [req.params.id, req.tenant.id, content, ai_generated]
+  );
+  await pool.query('UPDATE wa_conversations SET last_message=$1, last_message_at=NOW() WHERE id=$2', [content, req.params.id]);
+  res.json({ message: rows[0] });
+});
+
+app.post('/api/wa/ai-reply', platformAuth, usage('whatsapp-crm', 2), async (req, res) => {
+  const { conversation_id, context } = req.body;
+  try {
+    const reply = await callGroqAI(
+      `Você é um assistente de atendimento ao cliente para um pequeno negócio brasileiro. Seja cordial, objetivo e profissional. Responda em português brasileiro informal mas educado. Máximo 3 frases.`,
+      `Última mensagem do cliente: "${context}"\nGere uma resposta adequada.`,
+      300
+    );
+    res.json({ reply });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ============================================================
+// PLATFORM: Agenda
+// ============================================================
+
+app.get('/api/agenda/services', platformAuth, async (req, res) => {
+  const { rows } = await pool.query('SELECT * FROM agenda_services WHERE tenant_id=$1 AND active=true', [req.tenant.id]);
+  res.json({ services: rows });
+});
+
+app.post('/api/agenda/services', platformAuth, async (req, res) => {
+  const { name, duration, price, description } = req.body;
+  const { rows } = await pool.query(
+    'INSERT INTO agenda_services (tenant_id, name, duration, price, description) VALUES ($1,$2,$3,$4,$5) RETURNING *',
+    [req.tenant.id, name, duration, price, description]
+  );
+  res.json({ service: rows[0] });
+});
+
+app.get('/api/agenda/bookings', platformAuth, async (req, res) => {
+  const { date, status } = req.query;
+  let q = `SELECT b.*, s.name as service_name, s.duration, s.price FROM agenda_bookings b JOIN agenda_services s ON s.id=b.service_id WHERE b.tenant_id=$1`;
+  const params = [req.tenant.id];
+  if (date) { params.push(date); q += ` AND DATE(b.scheduled_at)=$${params.length}`; }
+  if (status) { params.push(status); q += ` AND b.status=$${params.length}`; }
+  q += ' ORDER BY b.scheduled_at ASC';
+  const { rows } = await pool.query(q, params);
+  res.json({ bookings: rows });
+});
+
+app.post('/api/agenda/bookings', platformAuth, usage('agenda'), async (req, res) => {
+  const { service_id, client_name, client_phone, client_email, scheduled_at, notes } = req.body;
+  const { rows } = await pool.query(
+    `INSERT INTO agenda_bookings (tenant_id, service_id, client_name, client_phone, client_email, scheduled_at, notes)
+     VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+    [req.tenant.id, service_id, client_name, client_phone, client_email, scheduled_at, notes]
+  );
+  res.json({ booking: rows[0] });
+});
+
+app.patch('/api/agenda/bookings/:id', platformAuth, async (req, res) => {
+  const { status } = req.body;
+  await pool.query('UPDATE agenda_bookings SET status=$1 WHERE id=$2 AND tenant_id=$3', [status, req.params.id, req.tenant.id]);
+  res.json({ success: true });
+});
+
+// ============================================================
+// PLATFORM: Automation Engine
+// ============================================================
+
+app.get('/api/automations', platformAuth, async (req, res) => {
+  const { rows } = await pool.query('SELECT * FROM automations WHERE tenant_id=$1 ORDER BY created_at DESC', [req.tenant.id]);
+  res.json({ automations: rows });
+});
+
+app.post('/api/automations', platformAuth, async (req, res) => {
+  const { name, description, trigger, steps } = req.body;
+  const { rows } = await pool.query(
+    `INSERT INTO automations (tenant_id, name, description, trigger, steps) VALUES ($1,$2,$3,$4,$5) RETURNING *`,
+    [req.tenant.id, name, description, JSON.stringify(trigger), JSON.stringify(steps||[])]
+  );
+  res.json({ automation: rows[0] });
+});
+
+app.post('/api/automations/:id/run', platformAuth, usage('automation', 2), async (req, res) => {
+  const { rows: [auto] } = await pool.query('SELECT * FROM automations WHERE id=$1 AND tenant_id=$2', [req.params.id, req.tenant.id]);
+  if (!auto) return res.status(404).json({ error: 'Automação não encontrada' });
+  const { rows: [run] } = await pool.query(
+    `INSERT INTO automation_runs (automation_id, tenant_id, status) VALUES ($1,$2,'running') RETURNING id`,
+    [auto.id, req.tenant.id]
+  );
+  executeAutomation(auto, run.id).catch(console.error);
+  res.json({ run_id: run.id, message: 'Automação iniciada' });
+});
+
+async function executeAutomation(auto, runId) {
+  const steps = auto.steps || [];
+  const log = [];
+  for (const step of steps) {
+    try {
+      log.push({ step: step.type, status: 'running', ts: new Date() });
+      if (step.type === 'wait') {
+        await new Promise(r => setTimeout(r, (step.seconds||1) * 1000));
+      }
+      log.push({ step: step.type, status: 'success', message: `${step.type} executado` });
+    } catch(e) {
+      log.push({ step: step.type, status: 'error', message: e.message });
+    }
+  }
+  await pool.query(`UPDATE automation_runs SET status='success', log=$1, finished_at=NOW() WHERE id=$2`, [JSON.stringify(log), runId]);
+  await pool.query('UPDATE automations SET runs=runs+1, last_run=NOW() WHERE id=$1', [auto.id]);
+}
+
+// ============================================================
+// PLATFORM: Billing
+// ============================================================
+
+const PLANS = {
+  free:    { name:'Free',    price:0,    executions:50,    apps:3 },
+  starter: { name:'Starter', price:97,   executions:500,   apps:10 },
+  pro:     { name:'Pro',     price:297,  executions:5000,  apps:999 },
+  agency:  { name:'Agency',  price:997,  executions:50000, apps:999 },
+};
+
+app.get('/api/billing/plans', (req, res) => res.json({ plans: PLANS }));
+
+app.get('/api/billing/usage', platformAuth, async (req, res) => {
+  const { executions_used, executions_limit, plan } = req.tenant;
+  const { rows } = await pool.query(
+    `SELECT app_id, COUNT(*) as count FROM usage_log WHERE tenant_id=$1 AND created_at > NOW() - INTERVAL '30 days' GROUP BY app_id`,
+    [req.tenant.id]
+  );
+  res.json({
+    plan, executions_used, executions_limit,
+    percent: Math.round(executions_used / executions_limit * 100),
+    by_app: rows,
+    plan_info: PLANS[plan]
+  });
+});
+
+app.post('/api/billing/upgrade', platformAuth, async (req, res) => {
+  const { plan } = req.body;
+  if (!PLANS[plan]) return res.status(400).json({ error: 'Plano inválido' });
+  await pool.query(
+    "UPDATE tenants SET plan=$1, executions_limit=$2, plan_expires_at=NOW()+INTERVAL'30 days' WHERE id=$3",
+    [plan, PLANS[plan].executions, req.tenant.id]
+  );
+  res.json({ success: true, message: `Upgradado para ${PLANS[plan].name}!` });
+});
+
+// ============================================================
+// PLATFORM: Groq AI helper
+// ============================================================
+
+async function callGroqAI(systemPrompt, userMessage, maxTokens) {
+  if (!GROQ_API_KEY) throw new Error('GROQ_API_KEY not configured');
+  const body = JSON.stringify({
+    model: GROQ_MODEL,
+    max_tokens: maxTokens || 500,
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userMessage }
+    ]
+  });
+  return new Promise((resolve, reject) => {
+    const req = https.request({
+      hostname: 'api.groq.com',
+      path: '/openai/v1/chat/completions',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + GROQ_API_KEY,
+        'Content-Length': Buffer.byteLength(body)
+      },
+      timeout: 30000
+    }, (res) => {
+      let data = '';
+      res.on('data', c => data += c);
+      res.on('end', () => {
+        try {
+          const parsed = JSON.parse(data);
+          if (parsed.choices && parsed.choices[0]) {
+            resolve(parsed.choices[0].message.content);
+          } else {
+            reject(new Error(parsed.error?.message || 'Groq API error'));
+          }
+        } catch(e) { reject(e); }
+      });
+    });
+    req.on('error', reject);
+    req.on('timeout', () => { req.destroy(); reject(new Error('Groq timeout')); });
+    req.write(body);
+    req.end();
+  });
+}
 
 // ============================================================
 // SETUP CODES & INSTALL PAGE

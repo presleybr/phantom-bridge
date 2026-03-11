@@ -1,0 +1,1182 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>PhantomOS</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    /* ── BASE ── */
+    * { margin:0; padding:0; box-sizing:border-box; }
+    :root {
+      --bg:#0d1117; --card:#161b22; --header:#1c2128;
+      --border:rgba(255,255,255,0.08); --accent:#7c3aed;
+      --green:#00d084; --blue:#3b82f6; --yellow:#f59e0b; --red:#ef4444;
+      --text:#e6edf3; --muted:#7d8590;
+    }
+    body { font-family:'Inter',sans-serif; background:var(--bg); color:var(--text);
+      height:100vh; overflow:hidden; user-select:none; }
+
+    /* ── DESKTOP ── */
+    #desktop {
+      position:fixed; inset:0; bottom:52px;
+      background:
+        radial-gradient(ellipse at 20% 50%, rgba(124,58,237,0.06) 0%, transparent 60%),
+        radial-gradient(ellipse at 80% 20%, rgba(59,130,246,0.04) 0%, transparent 60%),
+        var(--bg);
+    }
+    #desktop::before {
+      content:''; position:absolute; inset:0;
+      background-image:radial-gradient(rgba(255,255,255,0.025) 1px, transparent 1px);
+      background-size:32px 32px;
+    }
+
+    /* ── DESKTOP ICONS ── */
+    #desktop-icons {
+      position:absolute; top:20px; left:20px;
+      display:grid; grid-template-columns:80px 80px; gap:8px;
+    }
+    .d-icon {
+      display:flex; flex-direction:column; align-items:center; gap:5px;
+      padding:10px; border-radius:10px; cursor:pointer; transition:background 0.15s;
+    }
+    .d-icon:hover { background:rgba(255,255,255,0.07); }
+    .d-icon-emoji { font-size:32px; filter:drop-shadow(0 2px 6px rgba(0,0,0,0.5)); }
+    .d-icon-label { font-size:10px; font-weight:500; text-align:center;
+      text-shadow:0 1px 4px rgba(0,0,0,0.8); color:var(--text); }
+
+    /* ── STATUS BAR ── */
+    #status-bar {
+      position:absolute; top:14px; right:20px;
+      display:flex; align-items:center; gap:10px; font-size:11px; color:var(--muted);
+    }
+    .sdot { width:6px; height:6px; border-radius:50%; display:inline-block; }
+    .sdot.on  { background:var(--green); box-shadow:0 0 6px var(--green); }
+    .sdot.off { background:var(--red); }
+
+    /* ── USAGE BAR ── */
+    #usage-widget {
+      position:absolute; top:14px; left:50%; transform:translateX(-50%);
+      display:flex; align-items:center; gap:8px;
+      background:rgba(22,27,34,0.8); backdrop-filter:blur(16px);
+      border:1px solid var(--border); border-radius:20px; padding:6px 14px;
+      font-size:11px; color:var(--muted); cursor:pointer;
+    }
+    #usage-widget:hover { border-color:rgba(124,58,237,0.3); }
+    .usage-bar-mini { width:80px; height:4px; background:rgba(255,255,255,0.08); border-radius:2px; overflow:hidden; }
+    .usage-fill { height:100%; border-radius:2px; background:var(--accent); transition:width 0.5s; }
+
+    /* ── WINDOWS ── */
+    .win {
+      position:absolute; background:var(--card);
+      border:1px solid var(--border); border-radius:12px;
+      box-shadow:0 20px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.03);
+      min-width:320px; min-height:220px;
+      display:flex; flex-direction:column; overflow:hidden; z-index:100;
+    }
+    .win.focused { box-shadow:0 28px 72px rgba(0,0,0,0.65), 0 0 0 1px rgba(124,58,237,0.25); z-index:200; }
+    .win.maximized { top:0!important; left:0!important; width:100%!important; height:calc(100vh - 52px)!important; border-radius:0!important; }
+    .win.minimized { display:none!important; }
+
+    .win-header {
+      background:var(--header); padding:11px 14px;
+      display:flex; align-items:center; gap:8px;
+      cursor:grab; border-bottom:1px solid var(--border); flex-shrink:0;
+    }
+    .win-header:active { cursor:grabbing; }
+    .win-controls { display:flex; gap:5px; flex-shrink:0; }
+    .wc { width:11px; height:11px; border-radius:50%; border:none; cursor:pointer; transition:filter 0.1s; }
+    .wc:hover { filter:brightness(1.3); }
+    .wc-close { background:#ff5f57; }
+    .wc-min   { background:#febc2e; }
+    .wc-max   { background:#28c840; }
+    .win-title { font-size:12px; font-weight:600; flex:1; }
+    .win-icon  { font-size:14px; }
+    .win-body  { flex:1; overflow:hidden; display:flex; flex-direction:column; }
+    .win-resize { position:absolute; bottom:0; right:0; width:14px; height:14px; cursor:se-resize; }
+
+    /* ── TASKBAR ── */
+    #taskbar {
+      position:fixed; bottom:0; left:0; right:0; height:52px;
+      background:rgba(13,17,23,0.92); backdrop-filter:blur(20px);
+      border-top:1px solid var(--border);
+      display:flex; align-items:center; padding:0 14px; gap:4px; z-index:1000;
+    }
+    #tb-logo { font-size:20px; padding:6px; border-radius:8px; cursor:pointer; margin-right:8px; transition:background 0.15s; }
+    #tb-logo:hover { background:rgba(255,255,255,0.07); }
+    .tb-app {
+      display:flex; align-items:center; gap:5px; padding:5px 10px;
+      border-radius:7px; cursor:pointer; font-size:11px; color:var(--muted);
+      transition:all 0.15s; position:relative;
+    }
+    .tb-app:hover { background:rgba(255,255,255,0.06); color:var(--text); }
+    .tb-app.open  { background:rgba(124,58,237,0.15); color:var(--text); }
+    .tb-app.open::after { content:''; position:absolute; bottom:1px; left:50%; transform:translateX(-50%);
+      width:4px; height:4px; border-radius:50%; background:var(--accent); }
+    .tb-sep { width:1px; height:20px; background:var(--border); margin:0 6px; }
+    #tb-right { margin-left:auto; display:flex; align-items:center; gap:10px; font-size:11px; color:var(--muted); }
+    #tb-plan {
+      padding:3px 10px; border-radius:12px; font-size:10px; font-weight:700;
+      background:rgba(124,58,237,0.15); color:#a78bfa; cursor:pointer;
+    }
+
+    /* ── TOAST ── */
+    #toasts { position:fixed; bottom:60px; right:16px; z-index:9999; display:flex; flex-direction:column; gap:6px; }
+    .toast {
+      background:var(--header); border:1px solid var(--border); border-radius:10px;
+      padding:10px 14px; font-size:12px; max-width:280px;
+      box-shadow:0 6px 20px rgba(0,0,0,0.4); animation:tIn 0.2s ease;
+    }
+    @keyframes tIn { from{transform:translateY(6px);opacity:0} to{transform:translateY(0);opacity:1} }
+
+    /* ── BOOT ── */
+    #boot {
+      position:fixed; inset:0; background:#000;
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      z-index:9999; transition:opacity 0.5s;
+    }
+    #boot.done { opacity:0; pointer-events:none; }
+    .boot-logo { font-size:52px; margin-bottom:14px; }
+    .boot-name { font-size:22px; font-weight:800; letter-spacing:5px; }
+    .boot-sub  { font-size:11px; color:var(--muted); letter-spacing:3px; margin-top:6px; }
+    .boot-bar  { width:180px; height:2px; background:rgba(255,255,255,0.08); border-radius:2px; margin-top:28px; overflow:hidden; }
+    .boot-prog { height:100%; background:var(--accent); animation:bp 1.6s ease forwards; }
+    @keyframes bp { from{width:0} to{width:100%} }
+
+    /* ── APP CONTENTS ── */
+    .app-wrap { padding:16px; height:100%; overflow-y:auto; display:flex; flex-direction:column; gap:12px; }
+    .app-wrap::-webkit-scrollbar { width:4px; }
+    .app-wrap::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.1); border-radius:2px; }
+
+    /* Tabela padrão */
+    .at { width:100%; border-collapse:collapse; font-size:12px; }
+    .at th { padding:8px 12px; text-align:left; font-size:10px; font-weight:600;
+      letter-spacing:1px; color:var(--muted); text-transform:uppercase;
+      border-bottom:1px solid var(--border); }
+    .at td { padding:10px 12px; border-bottom:1px solid rgba(255,255,255,0.04); }
+    .at tr:last-child td { border-bottom:none; }
+    .at tr:hover td { background:rgba(255,255,255,0.02); }
+
+    /* Badge */
+    .ab { display:inline-flex; align-items:center; padding:2px 8px;
+      border-radius:10px; font-size:10px; font-weight:600; }
+    .ab-g { background:rgba(0,208,132,0.1);  color:var(--green); }
+    .ab-b { background:rgba(59,130,246,0.1);  color:var(--blue); }
+    .ab-y { background:rgba(245,158,11,0.1);  color:var(--yellow); }
+    .ab-r { background:rgba(239,68,68,0.1);   color:var(--red); }
+    .ab-p { background:rgba(124,58,237,0.1);  color:#a78bfa; }
+
+    /* Toolbar de app */
+    .atb { display:flex; align-items:center; gap:8px;
+      padding:10px 14px; border-bottom:1px solid var(--border); flex-shrink:0; }
+    .atb-btn { padding:5px 11px; border-radius:6px; font-size:11px; font-weight:600;
+      border:1px solid var(--border); background:rgba(255,255,255,0.04); color:var(--text);
+      cursor:pointer; transition:all 0.15s; font-family:inherit; }
+    .atb-btn:hover { background:rgba(255,255,255,0.08); }
+    .atb-btn.p { background:var(--accent); border-color:var(--accent); color:white; }
+    .atb-btn.p:hover { filter:brightness(1.1); }
+    .atb input { flex:1; background:rgba(255,255,255,0.04); border:1px solid var(--border);
+      border-radius:6px; padding:5px 10px; color:var(--text); font-size:11px;
+      font-family:inherit; outline:none; }
+    .atb input:focus { border-color:rgba(124,58,237,0.5); }
+
+    /* Scroll area */
+    .asc { flex:1; overflow-y:auto; }
+    .asc::-webkit-scrollbar { width:3px; }
+    .asc::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.08); border-radius:2px; }
+
+    /* Card simples */
+    .acard { background:rgba(255,255,255,0.025); border:1px solid var(--border);
+      border-radius:10px; padding:14px; }
+    .acard-label { font-size:10px; font-weight:600; letter-spacing:1px;
+      text-transform:uppercase; color:var(--muted); margin-bottom:6px; }
+    .acard-val { font-size:22px; font-weight:700; }
+
+    /* Grid 2 ou 4 col */
+    .g2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .g4 { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
+
+    /* Marketplace card */
+    .mkt-card {
+      background:var(--card); border:1px solid var(--border); border-radius:12px;
+      padding:18px; cursor:pointer; transition:all 0.15s;
+    }
+    .mkt-card:hover { border-color:rgba(124,58,237,0.3); transform:translateY(-1px); }
+    .mkt-icon { font-size:28px; margin-bottom:10px; }
+    .mkt-name { font-size:14px; font-weight:700; margin-bottom:4px; }
+    .mkt-desc { font-size:11px; color:var(--muted); line-height:1.4; margin-bottom:10px; }
+    .mkt-meta { display:flex; align-items:center; gap:8px; font-size:10px; color:var(--muted); }
+    .mkt-install { margin-left:auto; padding:4px 12px; border-radius:6px; font-size:11px;
+      font-weight:600; background:var(--accent); color:white; border:none; cursor:pointer; }
+    .mkt-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:12px; }
+
+    /* Automação node */
+    .auto-node {
+      background:rgba(255,255,255,0.04); border:1px solid var(--border);
+      border-radius:8px; padding:10px 14px; font-size:12px;
+      display:flex; align-items:center; gap:8px;
+    }
+    .auto-node-icon { font-size:18px; }
+
+    /* Social calendar */
+    .cal-grid {
+      display:grid; grid-template-columns:repeat(7,1fr); gap:6px;
+    }
+    .cal-day { background:rgba(255,255,255,0.03); border:1px solid var(--border);
+      border-radius:8px; padding:8px; min-height:80px; font-size:10px; }
+    .cal-day-label { color:var(--muted); margin-bottom:6px; font-weight:600; }
+    .cal-post { background:rgba(124,58,237,0.15); border-radius:4px; padding:3px 6px;
+      font-size:10px; margin-bottom:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+    /* Form inline */
+    .form-row { display:flex; flex-direction:column; gap:4px; }
+    .form-label { font-size:10px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:0.8px; }
+    .form-input, .form-select, .form-ta {
+      background:rgba(255,255,255,0.04); border:1px solid var(--border);
+      border-radius:7px; padding:8px 10px; color:var(--text); font-size:12px;
+      font-family:inherit; outline:none; transition:border-color 0.15s;
+    }
+    .form-input:focus, .form-select:focus, .form-ta:focus { border-color:rgba(124,58,237,0.5); }
+    .form-select option { background:var(--card); }
+    .form-ta { resize:vertical; min-height:70px; }
+
+    /* Loader */
+    .loader { display:flex; align-items:center; justify-content:center;
+      padding:32px; color:var(--muted); font-size:12px; gap:8px; }
+    .spin { animation:spin 1s linear infinite; display:inline-block; }
+    @keyframes spin { to{transform:rotate(360deg)} }
+  </style>
+</head>
+<body>
+
+<!-- BOOT -->
+<div id="boot">
+  <div class="boot-logo">👻</div>
+  <div class="boot-name">PHANTOM OS</div>
+  <div class="boot-sub">AI-POWERED PLATFORM</div>
+  <div class="boot-bar"><div class="boot-prog"></div></div>
+</div>
+
+<!-- DESKTOP -->
+<div id="desktop">
+  <div id="status-bar">
+    <span class="sdot on" id="s-dot"></span>
+    <span id="s-text">Online</span>
+  </div>
+  <div id="usage-widget" onclick="OS.open('billing')">
+    <span>⚡</span>
+    <div class="usage-bar-mini"><div class="usage-fill" id="usage-fill" style="width:0%"></div></div>
+    <span id="usage-text">0 / 50</span>
+    <span id="plan-label" class="ab ab-p" style="font-size:9px">FREE</span>
+  </div>
+  <div id="desktop-icons"></div>
+</div>
+
+<!-- TASKBAR -->
+<div id="taskbar">
+  <div id="tb-logo" onclick="OS.toggleStartMenu()" title="Menu">👻</div>
+  <div class="tb-sep"></div>
+  <div id="tb-apps"></div>
+  <div id="tb-right">
+    <span id="tb-plan" onclick="OS.open('billing')">FREE</span>
+    <span id="tb-clock"></span>
+  </div>
+</div>
+
+<!-- TOASTS -->
+<div id="toasts"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// AUTH GUARD
+// ═══════════════════════════════════════════════════════════
+const TOKEN  = localStorage.getItem('phantom_token');
+const TENANT = JSON.parse(localStorage.getItem('phantom_tenant') || 'null');
+if (!TOKEN || !TENANT) window.location.href = '/platform';
+
+const API = async (path, opts={}) => {
+  const r = await fetch('/api' + path, {
+    ...opts,
+    headers: { 'Content-Type':'application/json', 'Authorization':'Bearer '+TOKEN, ...(opts.headers||{}) },
+    body: opts.body ? JSON.stringify(opts.body) : undefined
+  });
+  const d = await r.json();
+  if (r.status === 401) { localStorage.clear(); window.location.href='/platform'; }
+  if (d.upgrade) { OS.toast('⚡ Limite atingido — faça upgrade!','Billing'); OS.open('billing'); }
+  return d;
+};
+
+// ═══════════════════════════════════════════════════════════
+// PHANTOMOS CORE
+// ═══════════════════════════════════════════════════════════
+const OS = {
+  windows: {}, z: 200,
+
+  APPS: [
+    { id:'social-studio', name:'Social Studio', icon:'📱', size:{w:820,h:560}, pinned:true },
+    { id:'arte-ia',       name:'Arte IA',       icon:'🎨', size:{w:760,h:540}, pinned:true },
+    { id:'whatsapp-crm',  name:'WhatsApp CRM',  icon:'💬', size:{w:780,h:520}, pinned:true },
+    { id:'agenda',        name:'Agenda',         icon:'📅', size:{w:760,h:500}, pinned:true },
+    { id:'automation',    name:'Automações',     icon:'⚡', size:{w:820,h:560}, pinned:true },
+    { id:'boleto',        name:'Boleto Manager', icon:'💰', size:{w:700,h:480}, pinned:false },
+    { id:'marketplace',   name:'Marketplace',    icon:'🏪', size:{w:860,h:580}, pinned:true },
+    { id:'billing',       name:'Plano',          icon:'💳', size:{w:680,h:460}, pinned:false },
+    { id:'crm',           name:'CRM',            icon:'👥', size:{w:760,h:500}, pinned:false },
+    { id:'bridge',        name:'Bridge',         icon:'🌐', size:{w:700,h:480}, pinned:false },
+  ],
+
+  boot() {
+    setTimeout(() => {
+      document.getElementById('boot').classList.add('done');
+      this.renderDesktopIcons();
+      this.renderTaskbar();
+      this.startClock();
+      this.loadUsage();
+      this.toast('👻 PhantomOS', `Bem-vindo, ${TENANT.name}!`);
+    }, 1900);
+  },
+
+  open(appId) {
+    const app = this.APPS.find(a => a.id === appId);
+    if (!app) return;
+    if (this.windows[appId]) {
+      this.focus(appId);
+      document.getElementById('w-'+appId)?.classList.remove('minimized');
+      return;
+    }
+    const offset = Object.keys(this.windows).length * 26;
+    const el = document.createElement('div');
+    el.className = 'win'; el.id = 'w-'+appId;
+    el.style.cssText = `left:${100+offset}px;top:${60+offset}px;width:${app.size.w}px;height:${app.size.h}px`;
+    el.innerHTML = `
+      <div class="win-header" id="wh-${appId}">
+        <div class="win-controls">
+          <button class="wc wc-close" onclick="OS.close('${appId}')"></button>
+          <button class="wc wc-min"   onclick="OS.min('${appId}')"></button>
+          <button class="wc wc-max"   onclick="OS.max('${appId}')"></button>
+        </div>
+        <span class="win-icon">${app.icon}</span>
+        <span class="win-title">${app.name}</span>
+      </div>
+      <div class="win-body" id="wb-${appId}"></div>
+      <div class="win-resize" id="wr-${appId}"></div>`;
+    document.getElementById('desktop').appendChild(el);
+    this.windows[appId] = { maximized:false };
+    this.focus(appId);
+    this.drag(el, document.getElementById('wh-'+appId), appId);
+    this.resize(el, document.getElementById('wr-'+appId));
+    RENDERS[appId]?.(document.getElementById('wb-'+appId));
+    this.updateTaskbar();
+  },
+
+  close(id) {
+    document.getElementById('w-'+id)?.remove();
+    delete this.windows[id];
+    this.updateTaskbar();
+  },
+
+  min(id) { document.getElementById('w-'+id)?.classList.toggle('minimized'); },
+
+  max(id) {
+    const el = this.windows[id];
+    if (!el) return;
+    el.maximized = !el.maximized;
+    document.getElementById('w-'+id)?.classList.toggle('maximized', el.maximized);
+  },
+
+  focus(id) {
+    Object.keys(this.windows).forEach(k => document.getElementById('w-'+k)?.classList.remove('focused'));
+    const el = document.getElementById('w-'+id);
+    if (el) { el.classList.add('focused'); el.style.zIndex = ++this.z; }
+  },
+
+  drag(win, header, id) {
+    let on=false, sx,sy,ox,oy;
+    header.addEventListener('mousedown', e => {
+      if (e.target.classList.contains('wc')) return;
+      if (this.windows[id]?.maximized) return;
+      on=true; sx=e.clientX; sy=e.clientY;
+      ox=parseInt(win.style.left); oy=parseInt(win.style.top);
+      this.focus(id);
+    });
+    document.addEventListener('mousemove', e => {
+      if (!on) return;
+      win.style.left = (ox+e.clientX-sx)+'px';
+      win.style.top  = Math.max(0, oy+e.clientY-sy)+'px';
+    });
+    document.addEventListener('mouseup', () => on=false);
+  },
+
+  resize(win, handle) {
+    let on=false,sx,sy,sw,sh;
+    handle.addEventListener('mousedown', e => {
+      on=true; sx=e.clientX; sy=e.clientY;
+      sw=parseInt(win.style.width); sh=parseInt(win.style.height); e.preventDefault();
+    });
+    document.addEventListener('mousemove', e => {
+      if (!on) return;
+      win.style.width  = Math.max(320, sw+e.clientX-sx)+'px';
+      win.style.height = Math.max(220, sh+e.clientY-sy)+'px';
+    });
+    document.addEventListener('mouseup', () => on=false);
+  },
+
+  renderDesktopIcons() {
+    const wrap = document.getElementById('desktop-icons');
+    const show = this.APPS.filter(a => !a.pinned);
+    wrap.innerHTML = show.map(a => `
+      <div class="d-icon" ondblclick="OS.open('${a.id}')">
+        <span class="d-icon-emoji">${a.icon}</span>
+        <span class="d-icon-label">${a.name}</span>
+      </div>`).join('');
+  },
+
+  renderTaskbar() {
+    const wrap = document.getElementById('tb-apps');
+    wrap.innerHTML = this.APPS.filter(a=>a.pinned).map(a=>`
+      <div class="tb-app" id="tb-${a.id}" onclick="OS.open('${a.id}')" title="${a.name}">
+        <span>${a.icon}</span>
+        <span style="font-size:10px">${a.name}</span>
+      </div>`).join('');
+  },
+
+  updateTaskbar() {
+    this.APPS.forEach(a => {
+      const el = document.getElementById('tb-'+a.id);
+      if (el) el.classList.toggle('open', !!this.windows[a.id]);
+    });
+  },
+
+  startClock() {
+    const update = () => {
+      const n = new Date();
+      document.getElementById('tb-clock').textContent =
+        n.toLocaleDateString('pt-BR',{weekday:'short',day:'numeric',month:'short'}) + ' · ' +
+        n.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    };
+    update(); setInterval(update, 1000);
+  },
+
+  async loadUsage() {
+    try {
+      const d = await API('/billing/usage');
+      document.getElementById('usage-fill').style.width  = d.percent+'%';
+      document.getElementById('usage-text').textContent  = `${d.executions_used} / ${d.executions_limit}`;
+      document.getElementById('plan-label').textContent  = d.plan.toUpperCase();
+      document.getElementById('tb-plan').textContent     = d.plan.toUpperCase();
+    } catch(e){}
+  },
+
+  toast(title, msg='') {
+    const el = document.createElement('div');
+    el.className = 'toast';
+    el.innerHTML = `<strong>${title}</strong>${msg?`<div style="color:var(--muted);margin-top:3px;font-size:11px">${msg}</div>`:''}`;
+    document.getElementById('toasts').appendChild(el);
+    setTimeout(()=>el.remove(), 3500);
+  },
+
+  toggleStartMenu() {
+    // Abrir/fechar menu de todos os apps
+    let menu = document.getElementById('start-menu');
+    if (menu) { menu.remove(); return; }
+    menu = document.createElement('div');
+    menu.id = 'start-menu';
+    menu.style.cssText = `
+      position:fixed;bottom:56px;left:14px;
+      background:var(--header);border:1px solid var(--border);
+      border-radius:14px;padding:14px;width:380px;
+      box-shadow:0 16px 48px rgba(0,0,0,0.5);z-index:2000;
+      display:grid;grid-template-columns:repeat(4,1fr);gap:8px;`;
+    menu.innerHTML = this.APPS.map(a=>`
+      <div onclick="OS.open('${a.id}');document.getElementById('start-menu')?.remove()" style="
+        display:flex;flex-direction:column;align-items:center;gap:5px;
+        padding:10px 6px;border-radius:8px;cursor:pointer;transition:background 0.15s;"
+        onmouseover="this.style.background='rgba(255,255,255,0.06)'"
+        onmouseout="this.style.background='transparent'">
+        <span style="font-size:24px">${a.icon}</span>
+        <span style="font-size:10px;text-align:center;color:var(--text)">${a.name}</span>
+      </div>`).join('');
+    document.body.appendChild(menu);
+    setTimeout(()=>document.addEventListener('click', function h(e){
+      if (!menu.contains(e.target) && e.target.id!=='tb-logo'){menu.remove();document.removeEventListener('click',h);}
+    }), 50);
+  }
+};
+
+// ═══════════════════════════════════════════════════════════
+// APP RENDERS
+// ═══════════════════════════════════════════════════════════
+const RENDERS = {
+
+  // ── SOCIAL STUDIO ─────────────────────────────────────────
+  'social-studio': async (body) => {
+    body.innerHTML = `<div class="atb">
+      <span style="font-size:12px;font-weight:600;flex:1">📱 Social Studio</span>
+      <button class="atb-btn p" onclick="SS.newPost()">+ Novo Post</button>
+      <button class="atb-btn" onclick="SS.generate()">✨ Gerar com IA</button>
+    </div>
+    <div style="display:flex;height:calc(100% - 44px)">
+      <div style="width:200px;border-right:1px solid var(--border);padding:12px;display:flex;flex-direction:column;gap:8px;flex-shrink:0">
+        <div style="font-size:10px;font-weight:700;letter-spacing:1px;color:var(--muted);text-transform:uppercase;margin-bottom:4px">Contas</div>
+        <div id="ss-accounts"><div class="loader"><span class="spin">⟳</span></div></div>
+        <button class="atb-btn" onclick="SS.addAccount()" style="margin-top:auto">+ Conectar</button>
+      </div>
+      <div style="flex:1;display:flex;flex-direction:column">
+        <div style="display:flex;border-bottom:1px solid var(--border)">
+          ${['📋 Posts','📅 Calendário','📊 Analytics'].map((t,i)=>`
+            <div onclick="SS.tab(${i},this)" class="tb-app ${i===0?'open':''}" style="border-radius:0;padding:10px 14px;font-size:11px">${t}</div>`).join('')}
+        </div>
+        <div class="asc" id="ss-content">
+          <div class="loader"><span class="spin">⟳</span> Carregando...</div>
+        </div>
+      </div>
+    </div>`;
+    SS.init();
+  },
+
+  // ── ARTE IA ───────────────────────────────────────────────
+  'arte-ia': async (body) => {
+    body.innerHTML = `<div class="atb">
+      <span style="font-size:12px;font-weight:600;flex:1">🎨 Arte IA</span>
+    </div>
+    <div style="display:flex;height:calc(100% - 44px)">
+      <div style="width:220px;border-right:1px solid var(--border);padding:14px;display:flex;flex-direction:column;gap:10px;flex-shrink:0;overflow-y:auto">
+        <div class="form-row"><label class="form-label">Pilar</label>
+          <select class="form-select" id="ai-pilar">
+            ${['Educação','Emoção','Dica Rápida','Autoridade','Serviços'].map(p=>`<option>${p}</option>`).join('')}
+          </select></div>
+        <div class="form-row"><label class="form-label">Nicho</label>
+          <input class="form-input" id="ai-niche" placeholder="ex: enfermagem"/></div>
+        <div class="form-row"><label class="form-label">Título</label>
+          <input class="form-input" id="ai-headline" placeholder="Texto principal"/></div>
+        <div class="form-row"><label class="form-label">Subtexto</label>
+          <input class="form-input" id="ai-sub" placeholder="Complemento"/></div>
+        <button class="atb-btn p" onclick="AI_Arte.generate()" style="margin-top:4px">✨ Gerar Arte</button>
+        <button class="atb-btn" onclick="AI_Arte.loadHistory()">⟳ Histórico</button>
+      </div>
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px" id="ai-preview">
+        <div style="color:var(--muted);font-size:13px;text-align:center">
+          Configure os parâmetros e clique em<br><strong>✨ Gerar Arte</strong>
+        </div>
+      </div>
+    </div>`;
+  },
+
+  // ── WHATSAPP CRM ──────────────────────────────────────────
+  'whatsapp-crm': async (body) => {
+    body.innerHTML = `<div style="display:flex;height:100%">
+      <div style="width:220px;border-right:1px solid var(--border);display:flex;flex-direction:column">
+        <div class="atb">
+          <span style="font-size:11px;font-weight:600;flex:1">Conversas</span>
+          <button class="atb-btn" onclick="WA.load()">↻</button>
+        </div>
+        <div class="asc" id="wa-list">
+          <div class="loader"><span class="spin">⟳</span></div>
+        </div>
+      </div>
+      <div style="flex:1;display:flex;flex-direction:column" id="wa-chat">
+        <div style="flex:1;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12px">
+          Selecione uma conversa
+        </div>
+      </div>
+    </div>`;
+    WA.load();
+  },
+
+  // ── AGENDA ────────────────────────────────────────────────
+  'agenda': async (body) => {
+    body.innerHTML = `<div class="atb">
+      <span style="font-size:12px;font-weight:600;flex:1">📅 Agenda</span>
+      <button class="atb-btn" onclick="AG.tab('bookings',this)">Agendamentos</button>
+      <button class="atb-btn" onclick="AG.tab('services',this)">Serviços</button>
+      <button class="atb-btn p" onclick="AG.newBooking()">+ Novo</button>
+    </div>
+    <div class="asc" id="ag-content">
+      <div class="loader"><span class="spin">⟳</span></div>
+    </div>`;
+    AG.tab('bookings', null);
+  },
+
+  // ── AUTOMATION ────────────────────────────────────────────
+  'automation': async (body) => {
+    body.innerHTML = `<div class="atb">
+      <span style="font-size:12px;font-weight:600;flex:1">⚡ Automation Engine</span>
+      <button class="atb-btn p" onclick="AUTO.new()">+ Nova Automação</button>
+    </div>
+    <div class="asc" id="auto-content">
+      <div class="loader"><span class="spin">⟳</span></div>
+    </div>`;
+    AUTO.load();
+  },
+
+  // ── MARKETPLACE ───────────────────────────────────────────
+  'marketplace': async (body) => {
+    body.innerHTML = `<div class="atb">
+      <span style="font-size:12px;font-weight:600;flex:1">🏪 Marketplace</span>
+      <input id="mkt-search" placeholder="🔍 Buscar apps..." oninput="MKT.search(this.value)"/>
+      <select class="form-select" id="mkt-cat" style="width:120px;font-size:11px;padding:5px 8px" onchange="MKT.filter(this.value)">
+        <option value="">Todas categorias</option>
+        ${['social','crm','finance','automation','productivity'].map(c=>`<option>${c}</option>`).join('')}
+      </select>
+      <button class="atb-btn p" onclick="MKT.publish()">📤 Publicar</button>
+    </div>
+    <div class="asc" style="padding:14px">
+      <div class="mkt-grid" id="mkt-grid">
+        <div class="loader"><span class="spin">⟳</span> Carregando marketplace...</div>
+      </div>
+    </div>`;
+    MKT.load();
+  },
+
+  // ── BILLING ───────────────────────────────────────────────
+  'billing': async (body) => {
+    body.innerHTML = `<div class="loader"><span class="spin">⟳</span></div>`;
+    const d = await API('/billing/usage');
+    const plans = await API('/billing/plans');
+    
+    body.innerHTML = `<div class="app-wrap">
+      <div class="g4">
+        <div class="acard">
+          <div class="acard-label">Plano Atual</div>
+          <div class="acard-val" style="color:var(--accent);font-size:16px;text-transform:uppercase">${d.plan}</div>
+        </div>
+        <div class="acard">
+          <div class="acard-label">Execuções</div>
+          <div class="acard-val" style="color:var(--blue)">${d.executions_used}</div>
+        </div>
+        <div class="acard">
+          <div class="acard-label">Limite</div>
+          <div class="acard-val">${d.executions_limit}</div>
+        </div>
+        <div class="acard">
+          <div class="acard-label">Uso</div>
+          <div class="acard-val" style="color:${d.percent>80?'var(--red)':'var(--green)'}">${d.percent}%</div>
+        </div>
+      </div>
+      <div style="background:rgba(255,255,255,0.04);border-radius:8px;overflow:hidden;height:8px;margin:0 0 8px">
+        <div style="height:100%;background:var(--accent);width:${d.percent}%;transition:width 0.5s"></div>
+      </div>
+      <div style="font-size:12px;margin-bottom:16px">
+        <strong>Uso por app:</strong>
+        ${(d.by_app||[]).map(a=>`<span class="ab ab-p" style="margin-right:6px">${a.app_id} (${a.count})</span>`).join('')||'<span style="color:var(--muted)">Nenhum ainda</span>'}
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px">
+        ${Object.entries(plans.plans||{}).map(([key,p])=>`
+          <div style="background:${key===d.plan?'rgba(124,58,237,0.08)':'rgba(255,255,255,0.02)'};
+            border:1px solid ${key===d.plan?'rgba(124,58,237,0.3)':'var(--border)'};
+            border-radius:10px;padding:14px;text-align:center">
+            <div style="font-size:13px;font-weight:700;margin-bottom:4px">${p.name}</div>
+            <div style="font-size:20px;font-weight:800;margin-bottom:8px">R$&nbsp;${p.price}<span style="font-size:11px;font-weight:400">/mês</span></div>
+            <div style="font-size:10px;color:var(--muted);margin-bottom:10px">${p.executions.toLocaleString()} exec/mês</div>
+            ${key!==d.plan ? `<button onclick="BILLING.upgrade('${key}')" style="width:100%;padding:6px;border-radius:6px;background:var(--accent);color:white;border:none;cursor:pointer;font-size:11px;font-weight:600">Assinar</button>` : `<span class="ab ab-g">Plano atual</span>`}
+          </div>`).join('')}
+      </div>
+    </div>`;
+  },
+
+  // ── CRM ───────────────────────────────────────────────────
+  'crm': (body) => {
+    body.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;gap:12px">
+      <button class="atb-btn p" onclick="window.open('/crm','_blank')">📊 Abrir CRM completo</button>
+      <button class="atb-btn" onclick="window.open('/','_blank')">🌐 Bridge Dashboard</button>
+    </div>`;
+  },
+
+  // ── BRIDGE ────────────────────────────────────────────────
+  'bridge': (body) => {
+    body.innerHTML = `<div class="app-wrap">
+      <div class="acard" id="bridge-status-card">
+        <div class="acard-label">Windows Server</div>
+        <div class="acard-val" id="bri-status">Verificando...</div>
+      </div>
+      <button class="atb-btn" onclick="BRIDGE.check()">↻ Verificar</button>
+      <button class="atb-btn" onclick="window.open('/','_blank')">Abrir Bridge Dashboard →</button>
+    </div>`;
+    BRIDGE.check();
+  },
+
+  // ── BOLETO ────────────────────────────────────────────────
+  'boleto': (body) => {
+    body.innerHTML = `<div class="atb">
+      <span style="font-size:12px;font-weight:600;flex:1">💰 Boleto Manager</span>
+      <button class="atb-btn p">+ Novo Lote</button>
+    </div>
+    <div class="app-wrap">
+      <div style="text-align:center;padding:40px;color:var(--muted);font-size:13px">
+        Conecte ao PhantomBridge para automação de boletos via Windows
+        <div style="margin-top:12px">
+          <button class="atb-btn p" onclick="OS.open('bridge')">⚡ Conectar Bridge</button>
+        </div>
+      </div>
+    </div>`,
+    BRIDGE.check();
+  },
+};
+
+// ═══════════════════════════════════════════════════════════
+// APP MODULES
+// ═══════════════════════════════════════════════════════════
+
+// ── SOCIAL STUDIO ──
+const SS = {
+  activeTab: 0,
+
+  async init() {
+    await this.loadAccounts();
+    await this.loadPosts();
+  },
+
+  tab(i, el) {
+    this.activeTab = i;
+    document.querySelectorAll('#w-social-studio .tb-app').forEach((t,j)=>t.classList.toggle('open',i===j));
+    if (i===0) this.loadPosts();
+    else if (i===1) this.renderCalendar();
+    else this.renderAnalytics();
+  },
+
+  async loadAccounts() {
+    const el = document.getElementById('ss-accounts');
+    if (!el) return;
+    const d = await API('/social/accounts');
+    el.innerHTML = (d.accounts||[]).map(a=>`
+      <div style="display:flex;align-items:center;gap:6px;padding:6px 8px;border-radius:6px;background:rgba(255,255,255,0.03);font-size:11px">
+        <span>${{instagram:'📸',tiktok:'🎵',whatsapp:'💬',facebook:'👤'}[a.platform]||'🌐'}</span>
+        <span style="flex:1;overflow:hidden;text-overflow:ellipsis">${a.username}</span>
+        <span class="ab ab-g" style="font-size:9px">${a.status}</span>
+      </div>`).join('') || '<div style="font-size:11px;color:var(--muted);padding:6px">Nenhuma conta conectada</div>';
+  },
+
+  async loadPosts() {
+    const el = document.getElementById('ss-content');
+    if (!el) return;
+    const d = await API('/social/posts?limit=20');
+    const posts = d.posts || [];
+    const statusBadge = { draft:'ab-p', scheduled:'ab-b', published:'ab-g', failed:'ab-r' };
+    el.innerHTML = posts.length ? `
+      <table class="at" style="margin:0">
+        <thead><tr><th>Conteúdo</th><th>Plataformas</th><th>Status</th><th>Agendado</th><th></th></tr></thead>
+        <tbody>
+          ${posts.map(p=>`
+            <tr>
+              <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.content||'—'}</td>
+              <td style="font-size:10px">${(p.platforms||[]).join(', ')||'—'}</td>
+              <td><span class="ab ${statusBadge[p.status]||'ab-p'}">${p.status}</span></td>
+              <td style="font-size:11px;color:var(--muted)">${p.scheduled_at?new Date(p.scheduled_at).toLocaleString('pt-BR',''):'—'}</td>
+              <td><button class="atb-btn" onclick="SS.deletePost('${p.id}')">🗑️</button></td>
+            </tr>`).join('')}
+        </tbody>
+      </table>` :
+      `<div class="loader">Nenhum post ainda. <button class="atb-btn p" onclick="SS.newPost()" style="margin-left:8px">Criar primeiro post</button></div>`;
+  },
+
+  async deletePost(id) {
+    if (!confirm('Remover post?')) return;
+    await API('/social/posts/'+id, {method:'DELETE'});
+    OS.toast('🗑️ Post removido');
+    this.loadPosts();
+  },
+
+  renderCalendar() {
+    const el = document.getElementById('ss-content');
+    if (!el) return;
+    const days = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+    el.innerHTML = `<div style="padding:14px">
+      <div class="cal-grid">
+        ${days.map(d=>`<div style="text-align:center;font-size:10px;font-weight:600;color:var(--muted);padding:4px">${d}</div>`).join('')}
+        ${Array(35).fill(0).map((_,i)=>`
+          <div class="cal-day">
+            <div class="cal-day-label">${i+1}</div>
+            ${i%7===0?'<div class="cal-post">Post IA</div>':''}
+          </div>`).join('')}
+      </div>
+    </div>`;
+  },
+
+  renderAnalytics() {
+    const el = document.getElementById('ss-content');
+    if (!el) return;
+    el.innerHTML = `<div class="app-wrap">
+      <div class="g4">
+        ${[['👁️ Alcance','1.234','ab-b'],['❤️ Engajamento','8.2%','ab-g'],['📤 Posts','12','ab-p'],['📈 Crescimento','+43','ab-g']].map(([l,v,c])=>`
+          <div class="acard">
+            <div class="acard-label">${l}</div>
+            <div class="acard-val"><span class="ab ${c}">${v}</span></div>
+          </div>`).join('')}
+      </div>
+      <div style="text-align:center;color:var(--muted);font-size:12px;padding:20px">
+        Analytics detalhados disponíveis após conectar contas de redes sociais
+      </div>
+    </div>`;
+  },
+
+  async newPost() {
+    const content = prompt('Conteúdo do post:');
+    if (!content) return;
+    const plats = prompt('Plataformas (instagram,tiktok,whatsapp):', 'instagram');
+    await API('/social/posts', {method:'POST', body:{content, platforms:plats?.split(',')||[], status:'draft'}});
+    OS.toast('✅ Post criado');
+    this.loadPosts();
+  },
+
+  async generate() {
+    const pillar = prompt('Pilar (Educação/Emoção/Dica Rápida/Autoridade/Serviços):', 'Dica Rápida');
+    const niche  = prompt('Nicho:', 'negócio local');
+    const topic  = prompt('Tema do post:', 'dica do dia');
+    if (!pillar || !niche) return;
+    OS.toast('⏳ Gerando com IA...');
+    const d = await API('/social/generate', {method:'POST', body:{pillar, niche, topic}});
+    if (d.caption) {
+      await API('/social/posts', {method:'POST', body:{
+        content: d.caption + '\n\n' + (d.hashtags||[]).map(h=>'#'+h).join(' '),
+        platforms:['instagram'], status:'draft', ai_generated:true, pillar
+      }});
+      OS.toast('✅ Post gerado com IA!');
+      this.loadPosts();
+    }
+  },
+
+  async addAccount() {
+    const platform = prompt('Plataforma (instagram/tiktok/whatsapp/facebook):', 'instagram');
+    const username = prompt('Username/número:', '@meunegoicio');
+    if (!platform || !username) return;
+    await API('/social/accounts', {method:'POST', body:{platform, username}});
+    OS.toast('✅ Conta conectada');
+    this.loadAccounts();
+  },
+};
+
+// ── ARTE IA ──
+const AI_Arte = {
+  async generate() {
+    const pillar   = document.getElementById('ai-pilar')?.value;
+    const niche    = document.getElementById('ai-niche')?.value || 'negócio local';
+    const headline = document.getElementById('ai-headline')?.value || 'Título aqui';
+    const subtext  = document.getElementById('ai-sub')?.value || '';
+    const preview  = document.getElementById('ai-preview');
+    if (!preview) return;
+    preview.innerHTML = `<div class="loader"><span class="spin">⟳</span> Gerando com IA...</div>`;
+    const d = await API('/arte/generate', {method:'POST', body:{pillar, niche, headline, subtext}});
+    if (d.html) {
+      preview.innerHTML = `
+        <div style="position:relative;width:270px;height:338px;overflow:hidden;border-radius:10px;border:1px solid var(--border)">
+          <iframe srcdoc="${d.html.replace(/"/g,'&quot;')}" style="width:1080px;height:1350px;border:none;transform:scale(0.25);transform-origin:top left;pointer-events:none"></iframe>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button class="atb-btn p" onclick="AI_Arte.approve('${d.id}')">✅ Aprovar</button>
+          <button class="atb-btn"   onclick="AI_Arte.generate()">🔄 Regerar</button>
+        </div>`;
+    } else {
+      preview.innerHTML = `<div style="color:var(--red);font-size:12px">${d.error||'Erro ao gerar'}</div>`;
+    }
+  },
+
+  async approve(id) {
+    await API('/arte/'+id+'/approve', {method:'PATCH'});
+    OS.toast('✅ Arte aprovada!');
+  },
+
+  async loadHistory() {
+    const preview = document.getElementById('ai-preview');
+    if (!preview) return;
+    const d = await API('/arte/history');
+    preview.innerHTML = `<div style="padding:10px;width:100%">
+      <div style="font-size:11px;font-weight:600;margin-bottom:8px">Histórico (${(d.arts||[]).length})</div>
+      ${(d.arts||[]).map(a=>`
+        <div style="display:flex;align-items:center;gap:8px;padding:6px;border-bottom:1px solid var(--border);font-size:11px">
+          <span class="ab ab-p">${a.pillar}</span>
+          <span style="flex:1;color:var(--muted)">${a.niche}</span>
+          <span class="ab ${a.approved?'ab-g':'ab-y'}">${a.approved?'Aprovada':'Pendente'}</span>
+          <span style="color:var(--muted);font-size:10px">${new Date(a.created_at).toLocaleDateString('pt-BR')}</span>
+        </div>`).join('')}
+    </div>`;
+  },
+};
+
+// ── WHATSAPP CRM ──
+const WA = {
+  async load() {
+    const el = document.getElementById('wa-list');
+    if (!el) return;
+    const d = await API('/wa/conversations');
+    el.innerHTML = (d.conversations||[]).map(c=>`
+      <div onclick="WA.open('${c.id}')" style="
+        padding:10px 12px;border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.1s;"
+        onmouseover="this.style.background='rgba(255,255,255,0.03)'" onmouseout="this.style.background='transparent'">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">
+          <span style="font-size:11px;font-weight:600;flex:1">${c.contact_name||c.contact_phone}</span>
+          ${c.unread>0?`<span class="ab ab-p">${c.unread}</span>`:''}
+        </div>
+        <div style="font-size:10px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.last_message||'Nova conversa'}</div>
+      </div>`).join('') || `<div class="loader" style="font-size:11px">Nenhuma conversa</div>`;
+  },
+
+  async open(id) {
+    const chat = document.getElementById('wa-chat');
+    if (!chat) return;
+    chat.innerHTML = `<div class="loader"><span class="spin">⟳</span></div>`;
+    const d = await API('/wa/conversations/'+id+'/messages');
+    const msgs = d.messages || [];
+    chat.innerHTML = `
+      <div style="flex:1;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:6px" id="wa-msgs">
+        ${msgs.map(m=>`
+          <div style="align-self:${m.direction==='out'?'flex-end':'flex-start'};max-width:75%">
+            <div style="background:${m.direction==='out'?'var(--accent)':'rgba(255,255,255,0.06)'};
+              border-radius:${m.direction==='out'?'12px 12px 4px 12px':'12px 12px 12px 4px'};
+              padding:8px 12px;font-size:12px;line-height:1.4">${m.content}</div>
+            <div style="font-size:9px;color:var(--muted);margin-top:2px;text-align:${m.direction==='out'?'right':'left'}">${new Date(m.created_at).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</div>
+          </div>`).join('')}
+      </div>
+      <div style="display:flex;gap:6px;padding:10px;border-top:1px solid var(--border)">
+        <input class="form-input" id="wa-input" placeholder="Mensagem..." style="flex:1" autocomplete="off"/>
+        <button class="atb-btn" onclick="WA.aiReply('${id}')">🤖 IA</button>
+        <button class="atb-btn p" onclick="WA.send('${id}')">Enviar</button>
+      </div>`;
+    const msgs_el = document.getElementById('wa-msgs');
+    if (msgs_el) msgs_el.scrollTop = msgs_el.scrollHeight;
+    document.getElementById('wa-input')?.addEventListener('keydown', e=>{ if(e.key==='Enter') WA.send(id); });
+  },
+
+  async send(id) {
+    const inp = document.getElementById('wa-input');
+    const txt = inp?.value.trim();
+    if (!txt) return;
+    inp.value = '';
+    await API('/wa/conversations/'+id+'/send', {method:'POST', body:{content:txt}});
+    this.open(id);
+  },
+
+  async aiReply(id) {
+    const inp = document.getElementById('wa-input');
+    const last = document.querySelectorAll('#wa-msgs > div:last-child')[0]?.textContent || '';
+    const d = await API('/wa/ai-reply', {method:'POST', body:{conversation_id:id, context:last}});
+    if (inp && d.reply) inp.value = d.reply;
+  },
+};
+
+// ── AGENDA ──
+const AG = {
+  currentTab: 'bookings',
+
+  async tab(t, el) {
+    this.currentTab = t;
+    if (t==='bookings') await this.loadBookings();
+    else await this.loadServices();
+  },
+
+  async loadBookings() {
+    const el = document.getElementById('ag-content');
+    if (!el) return;
+    const d = await API('/agenda/bookings');
+    const status = { confirmed:'ab-g', cancelled:'ab-r', completed:'ab-b' };
+    el.innerHTML = (d.bookings||[]).length ? `
+      <table class="at">
+        <thead><tr><th>Cliente</th><th>Serviço</th><th>Data/Hora</th><th>Status</th><th></th></tr></thead>
+        <tbody>
+          ${(d.bookings||[]).map(b=>`
+            <tr>
+              <td><div style="font-weight:500">${b.client_name}</div><div style="font-size:10px;color:var(--muted)">${b.client_phone}</div></td>
+              <td style="font-size:11px">${b.service_name||'—'}</td>
+              <td style="font-size:11px;color:var(--muted)">${new Date(b.scheduled_at).toLocaleString('pt-BR')}</td>
+              <td><span class="ab ${status[b.status]||'ab-p'}">${b.status}</span></td>
+              <td>
+                <button class="atb-btn" onclick="AG.updateStatus('${b.id}','completed')" style="font-size:10px">✓</button>
+                <button class="atb-btn" onclick="AG.updateStatus('${b.id}','cancelled')" style="font-size:10px">✗</button>
+              </td>
+            </tr>`).join('')}
+        </tbody>
+      </table>` :
+      `<div class="loader">Nenhum agendamento. <button class="atb-btn p" onclick="AG.newBooking()" style="margin-left:8px">Agendar agora</button></div>`;
+  },
+
+  async loadServices() {
+    const el = document.getElementById('ag-content');
+    if (!el) return;
+    const d = await API('/agenda/services');
+    el.innerHTML = `
+      <div style="padding:14px">
+        <button class="atb-btn p" onclick="AG.newService()" style="margin-bottom:12px">+ Novo Serviço</button>
+        <table class="at">
+          <thead><tr><th>Serviço</th><th>Duração</th><th>Preço</th></tr></thead>
+          <tbody>
+            ${(d.services||[]).map(s=>`
+              <tr>
+                <td style="font-weight:500">${s.name}</td>
+                <td style="font-size:11px;color:var(--muted)">${s.duration} min</td>
+                <td style="color:var(--green);font-weight:600">R$ ${parseFloat(s.price||0).toFixed(2)}</td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>`;
+  },
+
+  async updateStatus(id, status) {
+    await API('/agenda/bookings/'+id, {method:'PATCH', body:{status}});
+    OS.toast('✅ Status atualizado');
+    this.loadBookings();
+  },
+
+  async newBooking() {
+    const name  = prompt('Nome do cliente:');
+    const phone = prompt('Telefone:');
+    const dt    = prompt('Data/Hora (ex: 2025-03-15T14:00):');
+    if (!name || !dt) return;
+    const svcs = await API('/agenda/services');
+    const svc  = svcs.services?.[0];
+    if (!svc) return OS.toast('❌ Cadastre um serviço primeiro');
+    await API('/agenda/bookings', {method:'POST', body:{service_id:svc.id, client_name:name, client_phone:phone||'', scheduled_at:dt}});
+    OS.toast('✅ Agendamento criado');
+    this.loadBookings();
+  },
+
+  async newService() {
+    const name     = prompt('Nome do serviço:');
+    const duration = prompt('Duração (minutos):', '60');
+    const price    = prompt('Preço (R$):', '50');
+    if (!name) return;
+    await API('/agenda/services', {method:'POST', body:{name, duration:parseInt(duration), price:parseFloat(price)}});
+    OS.toast('✅ Serviço criado');
+    this.loadServices();
+  },
+};
+
+// ── AUTOMATION ──
+const AUTO = {
+  async load() {
+    const el = document.getElementById('auto-content');
+    if (!el) return;
+    const d = await API('/automations');
+    el.innerHTML = (d.automations||[]).length ? `
+      <div style="padding:14px;display:flex;flex-direction:column;gap:10px">
+        ${(d.automations||[]).map(a=>`
+          <div style="background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:10px;padding:14px">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+              <span style="font-size:12px;font-weight:600;flex:1">${a.name}</span>
+              <span class="ab ${a.active?'ab-g':'ab-r'}">${a.active?'Ativo':'Pausado'}</span>
+              <span style="font-size:10px;color:var(--muted)">Rodou ${a.runs}x</span>
+              <button class="atb-btn p" onclick="AUTO.run('${a.id}')" style="font-size:11px">▶ Executar</button>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+              <div class="auto-node">⚡ ${a.trigger?.type||'gatilho'}</div>
+              ${(a.steps||[]).map(s=>`→ <div class="auto-node">🔧 ${s.type||'ação'}</div>`).join('')}
+            </div>
+          </div>`).join('')}
+      </div>` :
+      `<div class="loader" style="flex-direction:column;gap:12px">
+        <div>Nenhuma automação criada</div>
+        <button class="atb-btn p" onclick="AUTO.new()">+ Criar primeira automação</button>
+      </div>`;
+  },
+
+  async run(id) {
+    OS.toast('⚡ Executando automação...');
+    const d = await API('/automations/'+id+'/run', {method:'POST'});
+    OS.toast('✅ ' + (d.message||'Executada!'));
+    setTimeout(()=>this.load(), 1000);
+  },
+
+  async new() {
+    const name = prompt('Nome da automação:');
+    const trig = prompt('Gatilho (novo_lead/mensagem_recebida/agendamento/manual):', 'manual');
+    if (!name) return;
+    await API('/automations', {method:'POST', body:{
+      name, trigger:{type:trig||'manual'}, steps:[{type:'send_whatsapp'},{type:'generate_art'}]
+    }});
+    OS.toast('✅ Automação criada');
+    this.load();
+  },
+};
+
+// ── MARKETPLACE ──
+const MKT = {
+  async load(params='') {
+    const el = document.getElementById('mkt-grid');
+    if (!el) return;
+    el.innerHTML = '<div class="loader"><span class="spin">⟳</span></div>';
+    const d = await API('/marketplace/apps'+params);
+    
+    // Apps nativos sempre mostrados
+    const native = [
+      {id:'n1',slug:'social-studio',name:'Social Studio',icon:'📱',description:'Calendário de posts e geração de conteúdo com IA',category:'social',installs:0,rating:5,price:0,price_type:'free'},
+      {id:'n2',slug:'arte-ia',name:'Arte IA',icon:'🎨',description:'Gera artes para Instagram em segundos com IA',category:'social',installs:0,rating:5,price:0,price_type:'free'},
+      {id:'n3',slug:'whatsapp-crm',name:'WhatsApp CRM',icon:'💬',description:'CRM completo com IA para WhatsApp',category:'crm',installs:0,rating:5,price:0,price_type:'free'},
+      {id:'n4',slug:'agenda',name:'Agenda Pro',icon:'📅',description:'Sistema de agendamentos com confirmação automática',category:'productivity',installs:0,rating:5,price:0,price_type:'free'},
+      {id:'n5',slug:'automation',name:'Automation Engine',icon:'⚡',description:'Crie fluxos de automação visuais sem código',category:'automation',installs:0,rating:5,price:0,price_type:'free'},
+      {id:'n6',slug:'boleto',name:'Boleto Manager',icon:'💰',description:'Emita e gerencie boletos em lote via Bridge',category:'finance',installs:0,rating:5,price:0,price_type:'free'},
+    ];
+    
+    const all = [...native, ...(d.apps||[])];
+    
+    el.innerHTML = all.map(a=>`
+      <div class="mkt-card">
+        <div class="mkt-icon">${a.icon||'🔧'}</div>
+        <div class="mkt-name">${a.name}</div>
+        <div class="mkt-desc">${a.description||''}</div>
+        <div class="mkt-meta">
+          <span>⬇ ${a.installs}</span>
+          <span>★ ${parseFloat(a.rating||0).toFixed(1)}</span>
+          <span class="ab ${a.price_type==='free'?'ab-g':'ab-p'}">${a.price_type==='free'?'Grátis':'R$'+a.price}</span>
+          <button class="mkt-install" onclick="MKT.install('${a.slug}','${a.name}')">
+            ${native.find(n=>n.slug===a.slug)?'Abrir':'Instalar'}
+          </button>
+        </div>
+      </div>`).join('');
+  },
+
+  async install(slug, name) {
+    const native = ['social-studio','arte-ia','whatsapp-crm','agenda','automation','boleto'];
+    if (native.includes(slug)) { OS.open(slug); return; }
+    const d = await API('/marketplace/install/'+slug, {method:'POST'});
+    OS.toast('✅ ' + (d.message||name+' instalado!'));
+  },
+
+  search(q) {
+    clearTimeout(this._t);
+    this._t = setTimeout(()=>this.load(q?`?search=${encodeURIComponent(q)}`:''), 300);
+  },
+
+  filter(cat) { this.load(cat?`?category=${cat}`:''); },
+
+  async publish() {
+    const name = prompt('Nome do seu app:');
+    const desc = prompt('Descrição:');
+    const cat  = prompt('Categoria (social/crm/finance/automation/productivity):', 'automation');
+    if (!name || !desc) return;
+    const d = await API('/marketplace/publish', {method:'POST', body:{name, description:desc, category:cat, icon:'🔧'}});
+    OS.toast('📤 ' + (d.message||'App enviado para revisão!'));
+  },
+};
+
+// ── BILLING ──
+const BILLING = {
+  async upgrade(plan) {
+    if (!confirm(`Fazer upgrade para o plano ${plan.toUpperCase()}?`)) return;
+    const d = await API('/billing/upgrade', {method:'POST', body:{plan}});
+    OS.toast('🎉 ' + (d.message||'Upgrade realizado!'));
+    OS.loadUsage();
+    OS.close('billing');
+    setTimeout(()=>OS.open('billing'), 200);
+  },
+};
+
+// ── BRIDGE ──
+const BRIDGE = {
+  async check() {
+    const el = document.getElementById('bri-status');
+    if (!el) return;
+    el.textContent = 'Verificando...';
+    try {
+      const d = await fetch('/api/status').then(r=>r.json());
+      el.textContent = d.windows?.online ? 'Online ✓' : 'Offline';
+      el.style.color = d.windows?.online ? 'var(--green)' : 'var(--red)';
+    } catch(e) {
+      el.textContent = 'Offline'; el.style.color = 'var(--red)';
+    }
+  },
+};
+
+// ═══════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════
+OS.boot();
+</script>
+</body>
+</html>
