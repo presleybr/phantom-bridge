@@ -2137,6 +2137,128 @@ app.get('/api/agent-setup/:code', (req, res) => {
   })
 })
 
+// Auto-provision: generates a new code automatically when someone visits
+app.get('/install/new', (req, res) => {
+  const agentName = req.query.name || 'Novo PC'
+  const code = generateSetupCode()
+  const agentId = agentName.toLowerCase().replace(/[^a-z0-9-]/g, '-') + '-' + code.split('-')[1].toLowerCase()
+  setupCodes.set(code, {
+    agentId,
+    agentName: agentName,
+    bridgeToken: REGISTER_TOKEN,
+    createdAt: new Date().toISOString(),
+    used: false
+  })
+  console.log('[PhantomBridge] Auto-provisioned: ' + code + ' for ' + agentId)
+  res.redirect('/install/' + code)
+})
+
+// Branded installer .cmd download — fully automated, no user input needed
+app.get('/install/:code/installer', (req, res) => {
+  const code = req.params.code.toUpperCase()
+  const entry = setupCodes.get(code)
+  if (!entry) return res.status(404).send('Invalid code')
+  const host = req.protocol + '://' + req.get('host')
+
+  const cmd = `@echo off
+chcp 65001 >nul
+title PhantomOS Agent - Instalador Automatico
+color 0B
+
+echo.
+echo   ██████╗ ██╗  ██╗ █████╗ ███╗   ██╗████████╗ ██████╗ ███╗   ███╗
+echo   ██╔══██╗██║  ██║██╔══██╗████╗  ██║╚══██╔══╝██╔═══██╗████╗ ████║
+echo   ██████╔╝███████║███████║██╔██╗ ██║   ██║   ██║   ██║██╔████╔██║
+echo   ██╔═══╝ ██╔══██║██╔══██║██║╚██╗██║   ██║   ██║   ██║██║╚██╔╝██║
+echo   ██║     ██║  ██║██║  ██║██║ ╚████║   ██║   ╚██████╔╝██║ ╚═╝ ██║
+echo   ╚═╝     ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝   ╚═╝    ╚═════╝ ╚═╝     ╚═╝
+echo.
+echo   ══════════════════════════════════════════════════
+echo      PhantomOS Agent — Instalador Automatico
+echo      Cliente: ${entry.agentName}
+echo      Codigo:  ${code}
+echo   ══════════════════════════════════════════════════
+echo.
+
+:: Definir diretorio de instalacao
+set "INSTALL_DIR=%ProgramFiles%\\PhantomAgent"
+if not exist "%INSTALL_DIR%" mkdir "%INSTALL_DIR%"
+echo   [1/5] Diretorio: %INSTALL_DIR%
+
+:: Baixar PhantomAgent.exe
+echo.
+echo   [2/5] Baixando PhantomAgent.exe...
+powershell -Command "try { [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri '${host}/agent/dist/PhantomAgent.exe' -OutFile '%INSTALL_DIR%\\PhantomAgent.exe' -UseBasicParsing } catch { Write-Host '  [!] Falha no download: ' + $_.Exception.Message }"
+if not exist "%INSTALL_DIR%\\PhantomAgent.exe" (
+    echo   [ERRO] Falha ao baixar PhantomAgent.exe
+    echo   Verifique sua conexao e tente novamente.
+    pause
+    exit /b 1
+)
+echo   [OK] PhantomAgent.exe instalado
+
+:: Baixar cloudflared.exe
+echo.
+echo   [3/5] Baixando cloudflared.exe...
+if not exist "%INSTALL_DIR%\\cloudflared.exe" (
+    powershell -Command "try { [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri 'https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe' -OutFile '%INSTALL_DIR%\\cloudflared.exe' -UseBasicParsing } catch { Write-Host '  [!] cloudflared nao baixado (opcional)' }"
+    if exist "%INSTALL_DIR%\\cloudflared.exe" (
+        echo   [OK] cloudflared.exe instalado
+    ) else (
+        echo   [!] cloudflared nao encontrado — tunnel manual necessario
+    )
+) else (
+    echo   [OK] cloudflared.exe ja existe
+)
+
+:: Configurar automaticamente com setup code
+echo.
+echo   [4/5] Configurando agente com codigo ${code}...
+cd /d "%INSTALL_DIR%"
+"%INSTALL_DIR%\\PhantomAgent.exe" --code=${code}
+if %errorlevel% neq 0 (
+    echo   [!] Configuracao via codigo falhou. Tentando manualmente...
+    powershell -Command "$c=@{bridgeUrl='${host}';bridgeToken='${entry.bridgeToken}';agentId='${entry.agentId}';agentName='${entry.agentName}';localPort=4444;heartbeatInterval=30000;tunnelEnabled=$true}; ConvertTo-Json $c | Out-File -Encoding UTF8 '%INSTALL_DIR%\\config.json'"
+    echo   [OK] config.json criado manualmente
+)
+
+:: Adicionar ao PATH e criar atalho
+echo.
+echo   [5/5] Finalizando instalacao...
+powershell -Command "$p=[Environment]::GetEnvironmentVariable('PATH','Machine'); if($p -notlike '*PhantomAgent*'){[Environment]::SetEnvironmentVariable('PATH','$p;%INSTALL_DIR%','Machine')}"
+:: Criar atalho na area de trabalho
+powershell -Command "$ws=New-Object -ComObject WScript.Shell; $sc=$ws.CreateShortcut([Environment]::GetFolderPath('Desktop')+'\\PhantomOS Agent.lnk'); $sc.TargetPath='%INSTALL_DIR%\\PhantomAgent.exe'; $sc.WorkingDirectory='%INSTALL_DIR%'; $sc.Description='PhantomOS Remote Agent'; $sc.Save()"
+
+:: Instalar como servico Windows
+echo.
+echo   Instalando como servico Windows (iniciar automaticamente)...
+sc create PhantomAgent binPath= "\"%INSTALL_DIR%\\PhantomAgent.exe\"" start= auto DisplayName= "PhantomOS Agent" >nul 2>&1
+sc description PhantomAgent "PhantomOS - Agente de controle remoto" >nul 2>&1
+net start PhantomAgent >nul 2>&1
+
+echo.
+echo   ══════════════════════════════════════════════════
+echo.
+echo      ✓ INSTALACAO CONCLUIDA COM SUCESSO!
+echo.
+echo      Cliente:   ${entry.agentName}
+echo      Agente ID: ${entry.agentId}
+echo      Dashboard: ${host}/dashboard
+echo.
+echo      O agente esta rodando em segundo plano.
+echo      Ele reconecta automaticamente ao reiniciar.
+echo.
+echo   ══════════════════════════════════════════════════
+echo.
+echo   Pressione qualquer tecla para fechar...
+pause >nul
+`
+
+  res.setHeader('Content-Type', 'application/octet-stream')
+  res.setHeader('Content-Disposition', `attachment; filename="PhantomOS-Setup-${entry.agentName.replace(/[^a-zA-Z0-9]/g, '')}.cmd"`)
+  res.send(cmd)
+})
+
 // Install page - client opens this link in browser
 app.get('/install/:code', (req, res) => {
   const code = req.params.code.toUpperCase()
@@ -2150,69 +2272,91 @@ app.get('/install/:code', (req, res) => {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PhantomOS Agent - Download</title>
+  <title>PhantomOS Agent - Instalador</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: #0a0a0f; color: #e0e0e0; font-family: 'Segoe UI', sans-serif; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
-    .container { max-width: 520px; width: 90%; text-align: center; }
-    .logo { font-size: 2rem; font-weight: 700; color: #00d4ff; margin-bottom: .5rem; letter-spacing: 2px; }
-    .logo span { color: #7b68ee; }
-    .subtitle { color: #888; margin-bottom: 2rem; }
-    .card { background: #12121a; border: 1px solid #1e1e2e; border-radius: 16px; padding: 2rem; margin-bottom: 1.5rem; }
-    .code-display { font-size: 2.5rem; font-weight: 700; color: #00d4ff; letter-spacing: 6px; font-family: 'Consolas', monospace; margin: 1rem 0; }
-    .agent-name { color: #7b68ee; font-size: 1.1rem; margin-bottom: 1rem; }
-    .btn { display: inline-block; padding: 14px 40px; background: linear-gradient(135deg, #00d4ff, #7b68ee); color: #fff; border: none; border-radius: 12px; font-size: 1.1rem; font-weight: 600; cursor: pointer; text-decoration: none; transition: transform .2s, box-shadow .2s; }
-    .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,212,255,.3); }
-    .btn-secondary { background: #1e1e2e; color: #00d4ff; border: 1px solid #00d4ff; margin-top: 1rem; font-size: .9rem; padding: 10px 24px; }
-    .steps { text-align: left; margin: 1.5rem 0; }
-    .step { display: flex; gap: 12px; margin-bottom: 1rem; align-items: flex-start; }
-    .step-num { width: 28px; height: 28px; background: #7b68ee; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: .85rem; flex-shrink: 0; }
-    .step-text { color: #ccc; line-height: 1.5; font-size: .95rem; }
-    .step-text code { background: #1a1a2a; padding: 2px 8px; border-radius: 4px; color: #00d4ff; font-family: 'Consolas', monospace; }
-    .invalid { color: #ff4444; }
-    .footer { color: #555; font-size: .8rem; margin-top: 2rem; }
+    body { background: #06060b; color: #e0e0e0; font-family: 'Inter', 'Segoe UI', sans-serif; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+    .bg-glow { position: fixed; top: -200px; left: 50%; transform: translateX(-50%); width: 800px; height: 800px; background: radial-gradient(circle, rgba(123,104,238,.08) 0%, rgba(0,212,255,.04) 40%, transparent 70%); pointer-events: none; }
+    .container { max-width: 520px; width: 92%; text-align: center; position: relative; z-index: 1; }
+    .logo { font-size: 2.2rem; font-weight: 900; margin-bottom: .3rem; letter-spacing: 1px; }
+    .logo .p { color: #7b68ee; }
+    .logo .o { color: #00d4ff; }
+    .subtitle { color: #666; margin-bottom: 2rem; font-size: .9rem; font-weight: 500; letter-spacing: 2px; text-transform: uppercase; }
+    .card { background: rgba(18,18,26,.8); backdrop-filter: blur(20px); border: 1px solid rgba(123,104,238,.15); border-radius: 20px; padding: 2.5rem; margin-bottom: 1.5rem; }
+    .agent-label { color: #888; font-size: .75rem; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; margin-bottom: .3rem; }
+    .agent-name { color: #7b68ee; font-size: 1.3rem; font-weight: 700; margin-bottom: 1.5rem; }
+    .btn-main {
+      display: inline-flex; align-items: center; gap: 10px;
+      padding: 16px 40px; background: linear-gradient(135deg, #7b68ee, #00d4ff);
+      color: #fff; border: none; border-radius: 14px; font-size: 1.1rem; font-weight: 700;
+      cursor: pointer; text-decoration: none; transition: all .2s; font-family: inherit;
+    }
+    .btn-main:hover { transform: translateY(-2px); box-shadow: 0 12px 32px rgba(123,104,238,.35); }
+    .btn-main svg { width: 22px; height: 22px; }
+    .auto-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      margin-top: 1rem; padding: 6px 14px; border-radius: 20px;
+      background: rgba(0,208,132,.1); border: 1px solid rgba(0,208,132,.2);
+      color: #00d084; font-size: .75rem; font-weight: 600;
+    }
+    .how { text-align: left; margin-top: 2rem; border-top: 1px solid rgba(255,255,255,.06); padding-top: 1.5rem; }
+    .how-title { font-size: .7rem; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #555; margin-bottom: 1rem; }
+    .step { display: flex; gap: 14px; margin-bottom: 1rem; align-items: center; }
+    .step-n { width: 30px; height: 30px; background: rgba(123,104,238,.15); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: .8rem; color: #7b68ee; flex-shrink: 0; }
+    .step-t { color: #aaa; font-size: .85rem; line-height: 1.5; }
+    .step-t b { color: #e0e0e0; }
+    .invalid { padding: 3rem; }
+    .invalid-icon { font-size: 3rem; margin-bottom: 1rem; opacity: .5; }
+    .invalid-text { color: #ff4444; font-size: 1.1rem; font-weight: 600; margin-bottom: .5rem; }
+    .footer { color: #333; font-size: .75rem; margin-top: 1.5rem; }
+    .footer a { color: #7b68ee; text-decoration: none; }
   </style>
 </head>
 <body>
+  <div class="bg-glow"></div>
   <div class="container">
-    <div class="logo">Phantom<span>OS</span></div>
-    <p class="subtitle">Windows Agent Installer</p>
+    <div class="logo"><span class="p">Phantom</span><span class="o">OS</span></div>
+    <p class="subtitle">Instalador do Agente</p>
     ${valid ? `
     <div class="card">
-      <p style="color:#888; font-size:.9rem;">Seu codigo de setup:</p>
-      <div class="code-display">${code}</div>
-      <p class="agent-name">${agentName}</p>
+      <div class="agent-label">Preparado para</div>
+      <div class="agent-name">${agentName}</div>
 
-      <a href="${host}/agent/dist/PhantomAgent.exe" class="btn" download>
-        Download PhantomAgent.exe
+      <a href="${host}/install/${code}/installer" class="btn-main">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+        Baixar Instalador
       </a>
 
-      <div class="steps" style="margin-top:2rem;">
+      <div class="auto-badge">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        Instalacao 100% automatica
+      </div>
+
+      <div class="how">
+        <div class="how-title">Como funciona</div>
         <div class="step">
-          <div class="step-num">1</div>
-          <div class="step-text">Clique em <strong>Download</strong> acima</div>
+          <div class="step-n">1</div>
+          <div class="step-t">Clique em <b>Baixar Instalador</b></div>
         </div>
         <div class="step">
-          <div class="step-num">2</div>
-          <div class="step-text">Execute o <code>PhantomAgent.exe</code> baixado</div>
+          <div class="step-n">2</div>
+          <div class="step-t"><b>Execute</b> o arquivo baixado como administrador</div>
         </div>
         <div class="step">
-          <div class="step-num">3</div>
-          <div class="step-text">Quando pedir o codigo, digite: <code>${code}</code></div>
-        </div>
-        <div class="step">
-          <div class="step-num">4</div>
-          <div class="step-text">Pronto! Seu PC estara conectado automaticamente.</div>
+          <div class="step-n">3</div>
+          <div class="step-t">Aguarde — ele baixa, configura e conecta <b>automaticamente</b></div>
         </div>
       </div>
     </div>
     ` : `
-    <div class="card">
-      <p class="invalid" style="font-size:1.2rem;">Codigo invalido ou expirado</p>
-      <p style="color:#888; margin-top:1rem;">Solicite um novo link de instalacao ao administrador.</p>
+    <div class="card invalid">
+      <div class="invalid-icon">🔒</div>
+      <div class="invalid-text">Link invalido ou expirado</div>
+      <p style="color:#666; font-size:.9rem;">Solicite um novo link ao administrador.</p>
     </div>
     `}
-    <p class="footer">PhantomOS &copy; ${new Date().getFullYear()} &mdash; Powered by PhantomBridge</p>
+    <p class="footer"><a href="/">PhantomOS</a> &copy; ${new Date().getFullYear()}</p>
   </div>
 </body>
 </html>`)
