@@ -1824,6 +1824,13 @@ body::before {
       </svg>
       <span class="taskbar-app-dot"></span>
     </button>
+    <button class="taskbar-app-btn" data-href="/crm" title="Nexus CRM">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="3" width="20" height="18" rx="2"/>
+        <path d="M8 7h8M8 11h5M8 15h8"/>
+      </svg>
+      <span class="taskbar-app-dot"></span>
+    </button>
   </div>
 
   <div class="taskbar-right">
@@ -1908,6 +1915,13 @@ body::before {
           <circle cx="18" cy="8" r="2"/><path d="M18 12c2 0 4 1.5 4 4"/>
         </svg>
         <span>Clients</span>
+      </div>
+      <div class="start-app-item" data-href="/crm">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="3" width="20" height="18" rx="2"/>
+          <path d="M8 7h8M8 11h5M8 15h8"/>
+        </svg>
+        <span>Nexus CRM</span>
       </div>
     </div>
   </div>
@@ -2915,7 +2929,7 @@ function filterStartApps(query) {
   var items = $$('.start-app-item');
   query = (query || '').toLowerCase();
   items.forEach(function(item) {
-    var name = (item.getAttribute('data-app') || '').toLowerCase();
+    var name = (item.getAttribute('data-app') || item.getAttribute('data-href') || '').toLowerCase();
     var label = (item.querySelector('span') || {}).textContent || '';
     var match = name.indexOf(query) >= 0 || label.toLowerCase().indexOf(query) >= 0;
     item.style.display = match ? 'flex' : 'none';
@@ -2936,6 +2950,21 @@ function buildStartMenu() {
         hideStartMenu();
       });
     }
+    var href = item.getAttribute('data-href');
+    if (href) {
+      item.addEventListener('click', function() {
+        window.open(href, '_blank');
+        hideStartMenu();
+      });
+    }
+  });
+
+  /* Wire up click handlers on taskbar external link buttons */
+  var taskbarLinks = document.querySelectorAll('#taskbar-apps .taskbar-app-btn[data-href]');
+  taskbarLinks.forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      window.open(btn.getAttribute('data-href'), '_blank');
+    });
   });
 
   /* Search input */

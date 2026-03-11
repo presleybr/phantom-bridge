@@ -42,6 +42,7 @@ app.use(express.json({ limit: '5mb' }))
 
 // Dashboard - serve static files
 app.use('/dashboard', express.static(path.join(__dirname, 'public')))
+app.use('/crm', express.static(path.join(__dirname, 'public', 'crm')))
 app.get('/', (req, res) => res.redirect('/dashboard'))
 
 // Secret token to protect registration

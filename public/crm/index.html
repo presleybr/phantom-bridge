@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nexus CRM</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0a0c10;--card:#111318;--card-hover:#161a22;--border:#1e2230;--purple:#6c63ff;--cyan:#00d4ff;--text:#e4e4e7;--text-dim:#8b8fa3;--green:#22c55e;--yellow:#eab308;--red:#ef4444;--orange:#f97316;--radius:10px}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+a{color:var(--cyan);text-decoration:none}
+a:hover{text-decoration:underline}
+button{cursor:pointer;font-family:inherit;border:none;outline:none}
+input,select,textarea{font-family:inherit;outline:none}
+
+/* TOP NAV */
+.topnav{display:flex;align-items:center;justify-content:space-between;padding:0 24px;height:56px;background:#0d0f14;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100}
+.topnav-left{display:flex;align-items:center;gap:10px}
+.topnav-left svg{width:28px;height:28px;color:var(--purple)}
+.topnav-left span{font-size:18px;font-weight:700;color:var(--text);letter-spacing:.5px}
+.topnav-center{display:flex;gap:4px}
+.tab-btn{padding:8px 18px;border-radius:6px;background:transparent;color:var(--text-dim);font-size:13px;font-weight:600;transition:.2s}
+.tab-btn:hover{background:var(--card);color:var(--text)}
+.tab-btn.active{background:var(--purple);color:#fff}
+.topnav-right{display:flex;align-items:center;gap:12px}
+.btn-phantom{display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:6px;background:var(--card);color:var(--cyan);font-size:12px;font-weight:600;border:1px solid var(--border);transition:.2s}
+.btn-phantom:hover{background:var(--card-hover);border-color:var(--cyan)}
+.btn-phantom svg{width:16px;height:16px}
+.admin-label{font-size:12px;color:var(--text-dim);display:flex;align-items:center;gap:6px}
+.admin-label svg{width:16px;height:16px;color:var(--purple)}
+.btn-logout{padding:6px 12px;border-radius:6px;background:transparent;color:var(--text-dim);font-size:12px;border:1px solid var(--border);transition:.2s}
+.btn-logout:hover{background:var(--red);color:#fff;border-color:var(--red)}
+
+/* MAIN */
+.main{padding:24px;max-width:1400px;margin:0 auto}
+.tab-content{display:none}
+.tab-content.active{display:block}
+
+/* STATS ROW */
+.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;display:flex;align-items:center;gap:16px}
+.stat-icon{width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.stat-icon svg{width:22px;height:22px}
+.stat-icon.purple{background:rgba(108,99,255,.15);color:var(--purple)}
+.stat-icon.cyan{background:rgba(0,212,255,.15);color:var(--cyan)}
+.stat-icon.green{background:rgba(34,197,94,.15);color:var(--green)}
+.stat-icon.yellow{background:rgba(234,179,8,.15);color:var(--yellow)}
+.stat-info h3{font-size:24px;font-weight:700;line-height:1}
+.stat-info p{font-size:12px;color:var(--text-dim);margin-top:4px}
+
+/* QUICK ACTIONS */
+.section-title{font-size:16px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.section-title svg{width:18px;height:18px;color:var(--purple)}
+.quick-actions{display:flex;gap:10px;margin-bottom:24px;flex-wrap:wrap}
+.qa-btn{display:flex;align-items:center;gap:8px;padding:10px 18px;border-radius:8px;background:var(--card);border:1px solid var(--border);color:var(--text);font-size:13px;font-weight:600;transition:.2s}
+.qa-btn:hover{border-color:var(--purple);background:var(--card-hover)}
+.qa-btn svg{width:16px;height:16px;color:var(--purple)}
+
+/* TIMELINE */
+.timeline{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px}
+.timeline-item{display:flex;gap:14px;padding:12px 0;border-bottom:1px solid var(--border)}
+.timeline-item:last-child{border-bottom:none}
+.tl-dot{width:10px;height:10px;border-radius:50%;margin-top:5px;flex-shrink:0}
+.tl-dot.purple{background:var(--purple)}
+.tl-dot.cyan{background:var(--cyan)}
+.tl-dot.green{background:var(--green)}
+.tl-text{font-size:13px;color:var(--text)}
+.tl-time{font-size:11px;color:var(--text-dim);margin-top:2px}
+
+/* CLIENTS TAB */
+.clients-toolbar{display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;align-items:center}
+.search-box{flex:1;min-width:200px;display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:0 14px}
+.search-box svg{width:16px;height:16px;color:var(--text-dim);flex-shrink:0}
+.search-box input{flex:1;padding:10px 0;background:transparent;border:none;color:var(--text);font-size:13px}
+.search-box input::placeholder{color:var(--text-dim)}
+.filter-select{padding:10px 14px;border-radius:8px;background:var(--card);border:1px solid var(--border);color:var(--text);font-size:13px}
+.filter-select option{background:var(--card);color:var(--text)}
+.btn-add{display:flex;align-items:center;gap:6px;padding:10px 18px;border-radius:8px;background:var(--purple);color:#fff;font-size:13px;font-weight:600;transition:.2s}
+.btn-add:hover{background:#5a52e0}
+.btn-add svg{width:16px;height:16px}
+
+/* CLIENT CARDS GRID */
+.clients-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px}
+.client-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;transition:.2s}
+.client-card:hover{border-color:var(--purple);transform:translateY(-2px)}
+.cc-header{padding:18px 20px;display:flex;align-items:center;justify-content:space-between;cursor:pointer}
+.cc-info{display:flex;align-items:center;gap:12px}
+.cc-avatar{width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,var(--purple),var(--cyan));display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;color:#fff;flex-shrink:0}
+.cc-name{font-size:14px;font-weight:600}
+.cc-type{font-size:11px;color:var(--text-dim);margin-top:2px}
+.cc-right{display:flex;align-items:center;gap:10px}
+.badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600}
+.badge-active{background:rgba(34,197,94,.15);color:var(--green)}
+.badge-in-progress{background:rgba(234,179,8,.15);color:var(--yellow)}
+.badge-paused{background:rgba(239,68,68,.15);color:var(--red)}
+.badge-completed{background:rgba(0,212,255,.15);color:var(--cyan)}
+.cc-expand svg{width:18px;height:18px;color:var(--text-dim);transition:.2s}
+.client-card.expanded .cc-expand svg{transform:rotate(180deg)}
+
+/* DETAIL PANEL */
+.cc-detail{display:none;padding:0 20px 20px;border-top:1px solid var(--border)}
+.client-card.expanded .cc-detail{display:block}
+.detail-section{margin-top:16px}
+.detail-section h4{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);margin-bottom:10px}
+.services-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.svc-card{display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;transition:.2s;font-size:12px;color:var(--text)}
+.svc-card:hover{border-color:var(--cyan);background:var(--card-hover);text-decoration:none}
+.svc-card svg{width:16px;height:16px;flex-shrink:0;color:var(--cyan)}
+.detail-notes{font-size:13px;color:var(--text-dim);background:var(--bg);padding:12px;border-radius:8px;border:1px solid var(--border);white-space:pre-wrap}
+.detail-actions{display:flex;gap:8px;margin-top:16px}
+.btn-edit,.btn-delete{padding:8px 16px;border-radius:6px;font-size:12px;font-weight:600;transition:.2s}
+.btn-edit{background:var(--purple);color:#fff}
+.btn-edit:hover{background:#5a52e0}
+.btn-delete{background:transparent;color:var(--red);border:1px solid var(--red)}
+.btn-delete:hover{background:var(--red);color:#fff}
+
+/* PROJECTS TAB - KANBAN */
+.kanban{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;min-height:400px}
+@media(max-width:900px){.kanban{grid-template-columns:1fr 1fr}}.kanban-col{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);display:flex;flex-direction:column}
+.kanban-header{padding:14px 16px;font-size:13px;font-weight:700;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.kanban-header .count{font-size:11px;background:var(--bg);padding:2px 8px;border-radius:10px;color:var(--text-dim)}
+.kanban-body{padding:12px;flex:1;display:flex;flex-direction:column;gap:10px;min-height:100px}
+.kanban-card{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px;transition:.2s}
+.kanban-card:hover{border-color:var(--purple)}
+.kc-title{font-size:13px;font-weight:600;margin-bottom:6px}
+.kc-client{font-size:11px;color:var(--text-dim);margin-bottom:8px}
+.kc-meta{display:flex;justify-content:space-between;align-items:center}
+.kc-date{font-size:10px;color:var(--text-dim)}
+.kc-actions{display:flex;gap:4px}
+.kc-btn{width:24px;height:24px;border-radius:4px;background:var(--card);display:flex;align-items:center;justify-content:center;border:1px solid var(--border);transition:.2s}
+.kc-btn:hover{border-color:var(--purple)}
+.kc-btn svg{width:12px;height:12px;color:var(--text-dim)}
+
+/* SERVICES TAB */
+.services-section{margin-bottom:24px}
+.services-section h3{font-size:15px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.services-section h3 svg{width:18px;height:18px;color:var(--purple)}
+.svc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+.svc-item{display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);transition:.2s}
+.svc-item:hover{border-color:var(--cyan)}
+.svc-item-icon{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.svc-item-icon svg{width:18px;height:18px}
+.svc-item-icon.web{background:rgba(0,212,255,.12);color:var(--cyan)}
+.svc-item-icon.social{background:rgba(108,99,255,.12);color:var(--purple)}
+.svc-item-icon.dev{background:rgba(34,197,94,.12);color:var(--green)}
+.svc-item-icon.msg{background:rgba(234,179,8,.12);color:var(--yellow)}
+.svc-item-info{flex:1;min-width:0}
+.svc-item-name{font-size:13px;font-weight:600}
+.svc-item-url{font-size:11px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.svc-status{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.svc-status.online{background:var(--green)}
+.svc-status.offline{background:var(--text-dim)}
+
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.active{display:flex}
+.modal{background:var(--card);border:1px solid var(--border);border-radius:12px;width:100%;max-width:560px;max-height:90vh;overflow-y:auto}
+.modal-header{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.modal-header h2{font-size:16px;font-weight:700}
+.modal-close{width:32px;height:32px;border-radius:6px;background:transparent;display:flex;align-items:center;justify-content:center;color:var(--text-dim);transition:.2s}
+.modal-close:hover{background:var(--bg);color:var(--text)}
+.modal-close svg{width:18px;height:18px}
+.modal-body{padding:24px}
+.form-group{margin-bottom:16px}
+.form-group label{display:block;font-size:12px;font-weight:600;color:var(--text-dim);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px}
+.form-group input,.form-group select,.form-group textarea{width:100%;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;transition:.2s}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--purple)}
+.form-group textarea{resize:vertical;min-height:80px}
+.form-divider{border:none;border-top:1px solid var(--border);margin:20px 0}
+.form-divider-label{font-size:11px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px}
+.modal-footer{padding:16px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px}
+.btn-cancel{padding:10px 20px;border-radius:8px;background:var(--bg);color:var(--text-dim);font-size:13px;font-weight:600;border:1px solid var(--border)}
+.btn-cancel:hover{color:var(--text)}
+.btn-save{padding:10px 24px;border-radius:8px;background:var(--purple);color:#fff;font-size:13px;font-weight:600}
+.btn-save:hover{background:#5a52e0}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;right:24px;padding:14px 20px;border-radius:8px;background:var(--green);color:#fff;font-size:13px;font-weight:600;z-index:300;transform:translateY(100px);opacity:0;transition:.3s}
+.toast.show{transform:translateY(0);opacity:1}
+.toast.error{background:var(--red)}
+
+/* RESPONSIVE */
+@media(max-width:768px){
+  .topnav{flex-wrap:wrap;height:auto;padding:12px 16px;gap:10px}
+  .topnav-center{order:3;width:100%;justify-content:center}
+  .main{padding:16px}
+  .clients-grid{grid-template-columns:1fr}
+  .kanban{grid-template-columns:1fr}
+  .stats-row{grid-template-columns:1fr 1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- TOP NAV -->
+<nav class="topnav">
+  <div class="topnav-left">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+    <span>Nexus CRM</span>
+  </div>
+  <div class="topnav-center">
+    <button class="tab-btn active" data-tab="dashboard">Dashboard</button>
+    <button class="tab-btn" data-tab="clients">Clients</button>
+    <button class="tab-btn" data-tab="projects">Projects</button>
+    <button class="tab-btn" data-tab="services">Services</button>
+  </div>
+  <div class="topnav-right">
+    <a href="/dashboard" class="btn-phantom">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+      Open PhantomOS
+    </a>
+    <span class="admin-label">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      Admin
+    </span>
+    <button class="btn-logout" onclick="logout()">Logout</button>
+  </div>
+</nav>
+
+<!-- MAIN CONTENT -->
+<div class="main">
+
+  <!-- DASHBOARD TAB -->
+  <div id="tab-dashboard" class="tab-content active">
+    <div class="stats-row" id="stats-row">
+      <div class="stat-card">
+        <div class="stat-icon purple"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+        <div class="stat-info"><h3 id="stat-clients">0</h3><p>Total Clients</p></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon cyan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></div>
+        <div class="stat-info"><h3 id="stat-projects">0</h3><p>Active Projects</p></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+        <div class="stat-info"><h3 id="stat-revenue">R$ 0</h3><p>Revenue</p></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon yellow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div>
+        <div class="stat-info"><h3 id="stat-tasks">0</h3><p>Pending Tasks</p></div>
+      </div>
+    </div>
+
+    <div class="section-title">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+      Quick Actions
+    </div>
+    <div class="quick-actions">
+      <button class="qa-btn" onclick="openModal()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+        Add Client
+      </button>
+      <button class="qa-btn" onclick="switchTab('projects')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+        New Project
+      </button>
+      <button class="qa-btn" onclick="switchTab('services')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        View Services
+      </button>
+    </div>
+
+    <div class="section-title">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      Recent Activity
+    </div>
+    <div class="timeline" id="timeline">
+      <div class="timeline-item"><div class="tl-dot green"></div><div><div class="tl-text">System initialized - Nexus CRM loaded</div><div class="tl-time">Just now</div></div></div>
+    </div>
+  </div>
+
+  <!-- CLIENTS TAB -->
+  <div id="tab-clients" class="tab-content">
+    <div class="clients-toolbar">
+      <div class="search-box">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="client-search" placeholder="Search clients..." oninput="filterClients()">
+      </div>
+      <select class="filter-select" id="filter-status" onchange="filterClients()">
+        <option value="">All Status</option>
+        <option value="active">Active</option>
+        <option value="in-progress">In Progress</option>
+        <option value="paused">Paused</option>
+        <option value="completed">Completed</option>
+      </select>
+      <select class="filter-select" id="filter-type" onchange="filterClients()">
+        <option value="">All Types</option>
+      </select>
+      <button class="btn-add" onclick="openModal()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Add Client
+      </button>
+    </div>
+    <div class="clients-grid" id="clients-grid"></div>
+  </div>
+
+  <!-- PROJECTS TAB -->
+  <div id="tab-projects" class="tab-content">
+    <div class="kanban" id="kanban">
+      <div class="kanban-col" data-status="backlog">
+        <div class="kanban-header">Backlog <span class="count" id="count-backlog">0</span></div>
+        <div class="kanban-body" id="col-backlog"></div>
+      </div>
+      <div class="kanban-col" data-status="in-progress">
+        <div class="kanban-header">In Progress <span class="count" id="count-in-progress">0</span></div>
+        <div class="kanban-body" id="col-in-progress"></div>
+      </div>
+      <div class="kanban-col" data-status="review">
+        <div class="kanban-header">Review <span class="count" id="count-review">0</span></div>
+        <div class="kanban-body" id="col-review"></div>
+      </div>
+      <div class="kanban-col" data-status="done">
+        <div class="kanban-header">Done <span class="count" id="count-done">0</span></div>
+        <div class="kanban-body" id="col-done"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SERVICES TAB -->
+  <div id="tab-services" class="tab-content" id="services-container"></div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modal-title">Add Client</h2>
+      <button class="modal-close" onclick="closeModal()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="form-id">
+      <div class="form-group"><label>Name *</label><input type="text" id="form-name" placeholder="Client name"></div>
+      <div class="form-group"><label>Type</label><input type="text" id="form-type" placeholder="e.g. Delivery, Landing Page, Automation"></div>
+      <div class="form-group"><label>Status</label>
+        <select id="form-status">
+          <option value="active">Active</option>
+          <option value="in-progress">In Progress</option>
+          <option value="paused">Paused</option>
+          <option value="completed">Completed</option>
+        </select>
+      </div>
+      <div class="form-group"><label>URL</label><input type="text" id="form-url" placeholder="https://..."></div>
+      <div class="form-group"><label>Notes</label><textarea id="form-notes" placeholder="Additional notes..."></textarea></div>
+      <hr class="form-divider">
+      <div class="form-divider-label">Services</div>
+      <div class="form-group"><label>Instagram URL</label><input type="text" id="form-svc-instagram" placeholder="https://instagram.com/..."></div>
+      <div class="form-group"><label>Facebook URL</label><input type="text" id="form-svc-facebook" placeholder="https://facebook.com/..."></div>
+      <div class="form-group"><label>WhatsApp</label><input type="text" id="form-svc-whatsapp" placeholder="5567999999999"></div>
+      <div class="form-group"><label>Website</label><input type="text" id="form-svc-website" placeholder="https://..."></div>
+      <div class="form-group"><label>GitHub</label><input type="text" id="form-svc-github" placeholder="https://github.com/..."></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-save" onclick="saveClient()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============ AUTH CHECK ============ */
+if (localStorage.getItem('phantom-auth') !== 'true') {
+  window.location.href = '/dashboard';
+}
+
+/* ============ STATE ============ */
+var clientsData = [];
+var projects = [
+  { id: 'p1', title: 'Claudia Delivery v2', client: 'Elas Espeto e Marmitaria', status: 'in-progress', date: '2025-08-15' },
+  { id: 'p2', title: 'Diamond Landing Page', client: 'Diamond Formaturas', status: 'review', date: '2025-09-20' },
+  { id: 'p3', title: 'Tilika Automation Pipeline', client: 'Tilika Content Studio', status: 'in-progress', date: '2025-10-01' },
+  { id: 'p4', title: 'Menu Digital Integration', client: 'Elas Espeto e Marmitaria', status: 'backlog', date: '2025-11-01' },
+  { id: 'p5', title: 'Instagram Bot Setup', client: 'Diamond Formaturas', status: 'backlog', date: '2025-11-10' },
+  { id: 'p6', title: 'WhatsApp Order Flow', client: 'Elas Espeto e Marmitaria', status: 'done', date: '2025-07-20' }
+];
+
+/* ============ SVG ICONS ============ */
+var icons = {
+  instagram: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="5"/><circle cx="17.5" cy="6.5" r="1.5" fill="currentColor" stroke="none"/></svg>',
+  facebook: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>',
+  whatsapp: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>',
+  website: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>',
+  github: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>',
+  api: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><circle cx="6" cy="6" r="1" fill="currentColor" stroke="none"/><circle cx="6" cy="18" r="1" fill="currentColor" stroke="none"/></svg>',
+  chevron: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>',
+  arrowLeft: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>',
+  arrowRight: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>',
+  map: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>'
+};
+
+/* ============ TABS ============ */
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+  document.querySelectorAll('.tab-content').forEach(function(c) { c.classList.remove('active'); });
+  document.querySelector('[data-tab="' + tab + '"]').classList.add('active');
+  document.getElementById('tab-' + tab).classList.add('active');
+}
+
+document.querySelectorAll('.tab-btn').forEach(function(btn) {
+  btn.addEventListener('click', function() { switchTab(this.dataset.tab); });
+});
+
+/* ============ TOAST ============ */
+function showToast(msg, isError) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (isError ? ' error' : '');
+  setTimeout(function() { t.className = 'toast'; }, 3000);
+}
+
+/* ============ FETCH CLIENTS ============ */
+function fetchClients() {
+  fetch('/api/clients').then(function(r) { return r.json(); }).then(function(data) {
+    if (data.ok) {
+      clientsData = data.clients;
+      renderDashboard();
+      renderClients();
+      renderProjects();
+      renderServices();
+      populateTypeFilter();
+    }
+  }).catch(function(err) {
+    showToast('Failed to load clients: ' + err.message, true);
+  });
+}
+
+/* ============ DASHBOARD ============ */
+function renderDashboard() {
+  document.getElementById('stat-clients').textContent = clientsData.length;
+  var activeCount = 0;
+  for (var i = 0; i < clientsData.length; i++) {
+    if (clientsData[i].status === 'active' || clientsData[i].status === 'in-progress') activeCount++;
+  }
+  document.getElementById('stat-projects').textContent = activeCount;
+  document.getElementById('stat-revenue').textContent = 'R$ ' + (clientsData.length * 1500).toLocaleString();
+  document.getElementById('stat-tasks').textContent = projects.filter(function(p) { return p.status !== 'done'; }).length;
+
+  var tl = document.getElementById('timeline');
+  var html = '';
+  var colors = ['green', 'purple', 'cyan'];
+  for (var j = 0; j < clientsData.length; j++) {
+    var c = clientsData[j];
+    var d = c.createdAt ? new Date(c.createdAt).toLocaleDateString() : 'N/A';
+    html += '<div class="timeline-item"><div class="tl-dot ' + colors[j % 3] + '"></div><div><div class="tl-text">Client added: <strong>' + escapeHtml(c.name) + '</strong> (' + escapeHtml(c.type || 'N/A') + ')</div><div class="tl-time">' + d + '</div></div></div>';
+  }
+  html += '<div class="timeline-item"><div class="tl-dot green"></div><div><div class="tl-text">CRM system initialized</div><div class="tl-time">System start</div></div></div>';
+  tl.innerHTML = html;
+}
+
+/* ============ CLIENTS ============ */
+function getBadgeClass(status) {
+  if (status === 'active') return 'badge-active';
+  if (status === 'in-progress') return 'badge-in-progress';
+  if (status === 'paused') return 'badge-paused';
+  if (status === 'completed') return 'badge-completed';
+  return 'badge-active';
+}
+
+function getServiceIconsHtml(client) {
+  var svc = client.services || {};
+  var html = '';
+  if (svc.frontend || svc.website || client.url) html += '<span title="Website" style="color:var(--cyan);display:inline-flex">' + icons.website + '</span>';
+  if (svc.instagram) html += '<span title="Instagram" style="color:var(--purple);display:inline-flex">' + icons.instagram + '</span>';
+  if (svc.facebook) html += '<span title="Facebook" style="color:var(--cyan);display:inline-flex">' + icons.facebook + '</span>';
+  if (svc.whatsapp) html += '<span title="WhatsApp" style="color:var(--green);display:inline-flex">' + icons.whatsapp + '</span>';
+  if (svc.github) html += '<span title="GitHub" style="color:var(--text);display:inline-flex">' + icons.github + '</span>';
+  if (svc.backend) html += '<span title="API" style="color:var(--yellow);display:inline-flex">' + icons.api + '</span>';
+  return '<div style="display:flex;gap:6px;margin-top:6px">' + html + '</div>';
+}
+
+function buildServiceCards(client) {
+  var svc = client.services || {};
+  var cards = '';
+  if (svc.frontend) cards += '<a href="' + escapeHtml(svc.frontend) + '" target="_blank" class="svc-card">' + icons.website + ' Website</a>';
+  if (svc.backend) cards += '<a href="' + escapeHtml(svc.backend) + '" target="_blank" class="svc-card">' + icons.api + ' API</a>';
+  if (svc.instagram) cards += '<a href="' + escapeHtml(svc.instagram) + '" target="_blank" class="svc-card">' + icons.instagram + ' Instagram</a>';
+  if (svc.facebook) cards += '<a href="' + escapeHtml(svc.facebook) + '" target="_blank" class="svc-card">' + icons.facebook + ' Facebook</a>';
+  if (svc.whatsapp) cards += '<a href="https://wa.me/' + escapeHtml(svc.whatsapp) + '" target="_blank" class="svc-card">' + icons.whatsapp + ' WhatsApp</a>';
+  if (svc.github) cards += '<a href="' + escapeHtml(svc.github) + '" target="_blank" class="svc-card">' + icons.github + ' GitHub</a>';
+  if (client.url && !svc.frontend) cards += '<a href="' + escapeHtml(client.url) + '" target="_blank" class="svc-card">' + icons.website + ' Website</a>';
+  return cards;
+}
+
+function getElasExtraInfo(client) {
+  if (client.id !== '1') return '';
+  return '<div class="detail-section"><h4>Contact &amp; Location</h4>' +
+    '<div class="services-grid">' +
+    '<a href="https://wa.me/5567996450189" target="_blank" class="svc-card">' + icons.whatsapp + ' (67) 99645-0189</a>' +
+    '<a href="https://maps.google.com/?q=R.+Tito+Mello+Jardim+Guaicurus+Dourados+MS" target="_blank" class="svc-card">' + icons.map + ' R. Tito Mello - Jd. Guaicurus</a>' +
+    '</div></div>';
+}
+
+function renderClients() {
+  var grid = document.getElementById('clients-grid');
+  var search = document.getElementById('client-search').value.toLowerCase();
+  var statusFilter = document.getElementById('filter-status').value;
+  var typeFilter = document.getElementById('filter-type').value;
+
+  var filtered = clientsData.filter(function(c) {
+    if (search && c.name.toLowerCase().indexOf(search) === -1 && (c.type || '').toLowerCase().indexOf(search) === -1) return false;
+    if (statusFilter && c.status !== statusFilter) return false;
+    if (typeFilter && (c.type || '') !== typeFilter) return false;
+    return true;
+  });
+
+  var html = '';
+  for (var i = 0; i < filtered.length; i++) {
+    var c = filtered[i];
+    var initials = c.name.split(' ').map(function(w) { return w[0]; }).join('').substring(0, 2).toUpperCase();
+    var svcCards = buildServiceCards(c);
+    var extraInfo = getElasExtraInfo(c);
+
+    html += '<div class="client-card" id="card-' + c.id + '">' +
+      '<div class="cc-header" onclick="toggleCard(\'' + c.id + '\')">' +
+        '<div class="cc-info">' +
+          '<div class="cc-avatar">' + initials + '</div>' +
+          '<div><div class="cc-name">' + escapeHtml(c.name) + '</div><div class="cc-type">' + escapeHtml(c.type || 'N/A') + '</div>' + getServiceIconsHtml(c) + '</div>' +
+        '</div>' +
+        '<div class="cc-right">' +
+          '<span class="badge ' + getBadgeClass(c.status) + '">' + escapeHtml(c.status) + '</span>' +
+          '<div class="cc-expand">' + icons.chevron + '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="cc-detail">' +
+        (svcCards ? '<div class="detail-section"><h4>Services</h4><div class="services-grid">' + svcCards + '</div></div>' : '') +
+        extraInfo +
+        (c.notes ? '<div class="detail-section"><h4>Notes</h4><div class="detail-notes">' + escapeHtml(c.notes) + '</div></div>' : '') +
+        '<div class="detail-actions">' +
+          '<button class="btn-edit" onclick="editClient(\'' + c.id + '\')">Edit</button>' +
+          '<button class="btn-delete" onclick="deleteClient(\'' + c.id + '\')">Delete</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  grid.innerHTML = html || '<p style="color:var(--text-dim);padding:40px;text-align:center">No clients found</p>';
+}
+
+function toggleCard(id) {
+  var card = document.getElementById('card-' + id);
+  if (card) card.classList.toggle('expanded');
+}
+
+function filterClients() { renderClients(); }
+
+function populateTypeFilter() {
+  var sel = document.getElementById('filter-type');
+  var types = {};
+  for (var i = 0; i < clientsData.length; i++) {
+    if (clientsData[i].type) types[clientsData[i].type] = true;
+  }
+  var html = '<option value="">All Types</option>';
+  var keys = Object.keys(types);
+  for (var j = 0; j < keys.length; j++) {
+    html += '<option value="' + escapeHtml(keys[j]) + '">' + escapeHtml(keys[j]) + '</option>';
+  }
+  sel.innerHTML = html;
+}
+
+/* ============ PROJECTS KANBAN ============ */
+function renderProjects() {
+  var cols = { backlog: [], 'in-progress': [], review: [], done: [] };
+  for (var i = 0; i < projects.length; i++) {
+    var p = projects[i];
+    if (cols[p.status]) cols[p.status].push(p);
+  }
+  var statuses = ['backlog', 'in-progress', 'review', 'done'];
+  for (var s = 0; s < statuses.length; s++) {
+    var st = statuses[s];
+    var body = document.getElementById('col-' + st);
+    document.getElementById('count-' + st).textContent = cols[st].length;
+    var html = '';
+    for (var j = 0; j < cols[st].length; j++) {
+      var proj = cols[st][j];
+      var prevStatus = s > 0 ? statuses[s - 1] : null;
+      var nextStatus = s < statuses.length - 1 ? statuses[s + 1] : null;
+      html += '<div class="kanban-card">' +
+        '<div class="kc-title">' + escapeHtml(proj.title) + '</div>' +
+        '<div class="kc-client">' + escapeHtml(proj.client) + '</div>' +
+        '<div class="kc-meta">' +
+          '<span class="kc-date">' + proj.date + '</span>' +
+          '<div class="kc-actions">' +
+            (prevStatus ? '<button class="kc-btn" title="Move left" onclick="moveProject(\'' + proj.id + '\',\'' + prevStatus + '\')">' + icons.arrowLeft + '</button>' : '') +
+            (nextStatus ? '<button class="kc-btn" title="Move right" onclick="moveProject(\'' + proj.id + '\',\'' + nextStatus + '\')">' + icons.arrowRight + '</button>' : '') +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    }
+    body.innerHTML = html;
+  }
+}
+
+function moveProject(id, newStatus) {
+  for (var i = 0; i < projects.length; i++) {
+    if (projects[i].id === id) {
+      projects[i].status = newStatus;
+      break;
+    }
+  }
+  renderProjects();
+  showToast('Project moved to ' + newStatus);
+}
+
+/* ============ SERVICES TAB ============ */
+function renderServices() {
+  var container = document.getElementById('tab-services');
+  var html = '';
+
+  for (var i = 0; i < clientsData.length; i++) {
+    var c = clientsData[i];
+    var svc = c.services || {};
+    var hasServices = Object.keys(svc).length > 0 || c.url;
+    if (!hasServices) continue;
+
+    html += '<div class="services-section">' +
+      '<h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg> ' + escapeHtml(c.name) + '</h3>' +
+      '<div class="svc-grid">';
+
+    if (svc.frontend) {
+      html += buildServiceItem('Website (Frontend)', svc.frontend, 'web', icons.website, true);
+    }
+    if (svc.backend) {
+      html += buildServiceItem('API (Backend)', svc.backend, 'dev', icons.api, true);
+    }
+    if (svc.instagram) {
+      html += buildServiceItem('Instagram', svc.instagram, 'social', icons.instagram, true);
+    }
+    if (svc.facebook) {
+      html += buildServiceItem('Facebook', svc.facebook, 'social', icons.facebook, true);
+    }
+    if (svc.whatsapp) {
+      html += buildServiceItem('WhatsApp', 'https://wa.me/' + svc.whatsapp, 'msg', icons.whatsapp, true);
+    }
+    if (svc.github) {
+      html += buildServiceItem('GitHub', svc.github, 'dev', icons.github, true);
+    }
+    if (c.url && !svc.frontend) {
+      html += buildServiceItem('Website', c.url, 'web', icons.website, !!c.url);
+    }
+
+    html += '</div></div>';
+  }
+
+  if (!html) {
+    html = '<p style="color:var(--text-dim);padding:40px;text-align:center">No services configured</p>';
+  }
+
+  container.innerHTML = html;
+}
+
+function buildServiceItem(name, url, iconClass, iconSvg, isOnline) {
+  return '<a href="' + escapeHtml(url) + '" target="_blank" class="svc-item">' +
+    '<div class="svc-item-icon ' + iconClass + '">' + iconSvg + '</div>' +
+    '<div class="svc-item-info"><div class="svc-item-name">' + escapeHtml(name) + '</div><div class="svc-item-url">' + escapeHtml(url) + '</div></div>' +
+    '<div class="svc-status ' + (isOnline ? 'online' : 'offline') + '"></div>' +
+  '</a>';
+}
+
+/* ============ MODAL ============ */
+function openModal(client) {
+  document.getElementById('modal-overlay').classList.add('active');
+  if (client) {
+    document.getElementById('modal-title').textContent = 'Edit Client';
+    document.getElementById('form-id').value = client.id || '';
+    document.getElementById('form-name').value = client.name || '';
+    document.getElementById('form-type').value = client.type || '';
+    document.getElementById('form-status').value = client.status || 'active';
+    document.getElementById('form-url').value = client.url || '';
+    document.getElementById('form-notes').value = client.notes || '';
+    var svc = client.services || {};
+    document.getElementById('form-svc-instagram').value = svc.instagram || '';
+    document.getElementById('form-svc-facebook').value = svc.facebook || '';
+    document.getElementById('form-svc-whatsapp').value = svc.whatsapp || '';
+    document.getElementById('form-svc-website').value = svc.frontend || svc.website || '';
+    document.getElementById('form-svc-github').value = svc.github || '';
+  } else {
+    document.getElementById('modal-title').textContent = 'Add Client';
+    document.getElementById('form-id').value = '';
+    document.getElementById('form-name').value = '';
+    document.getElementById('form-type').value = '';
+    document.getElementById('form-status').value = 'active';
+    document.getElementById('form-url').value = '';
+    document.getElementById('form-notes').value = '';
+    document.getElementById('form-svc-instagram').value = '';
+    document.getElementById('form-svc-facebook').value = '';
+    document.getElementById('form-svc-whatsapp').value = '';
+    document.getElementById('form-svc-website').value = '';
+    document.getElementById('form-svc-github').value = '';
+  }
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('active');
+}
+
+function editClient(id) {
+  var client = clientsData.find(function(c) { return c.id === id; });
+  if (client) openModal(client);
+}
+
+function saveClient() {
+  var name = document.getElementById('form-name').value.trim();
+  if (!name) { showToast('Name is required', true); return; }
+
+  var payload = {
+    name: name,
+    type: document.getElementById('form-type').value.trim(),
+    status: document.getElementById('form-status').value,
+    url: document.getElementById('form-url').value.trim(),
+    notes: document.getElementById('form-notes').value.trim()
+  };
+
+  var id = document.getElementById('form-id').value;
+  if (id) payload.id = id;
+
+  fetch('/api/clients', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  }).then(function(r) { return r.json(); }).then(function(data) {
+    if (data.ok) {
+      showToast('Client ' + data.action + ' successfully');
+      closeModal();
+      fetchClients();
+    } else {
+      showToast(data.error || 'Error saving client', true);
+    }
+  }).catch(function(err) {
+    showToast('Error: ' + err.message, true);
+  });
+}
+
+function deleteClient(id) {
+  if (!confirm('Delete this client?')) return;
+  fetch('/api/clients/' + id, { method: 'DELETE' }).then(function(r) { return r.json(); }).then(function(data) {
+    if (data.ok) {
+      showToast('Client deleted');
+      fetchClients();
+    } else {
+      showToast(data.error || 'Error deleting client', true);
+    }
+  }).catch(function(err) {
+    showToast('Error: ' + err.message, true);
+  });
+}
+
+/* ============ LOGOUT ============ */
+function logout() {
+  localStorage.removeItem('phantom-auth');
+  window.location.href = '/dashboard';
+}
+
+/* ============ UTILS ============ */
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+/* ============ INIT ============ */
+fetchClients();
+</script>
+</body>
+</html>
