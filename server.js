@@ -53,9 +53,24 @@ let lastSeen = null
 
 // In-memory clients store
 let clients = [
-  { id: '1', name: 'Ellos Marmitaria', status: 'active', type: 'Website', url: 'https://ellosmarmitaria.com.br', notes: 'Landing page + delivery system', createdAt: '2025-08-15T10:00:00Z' },
-  { id: '2', name: 'Diamond Formaturas', status: 'active', type: 'Landing Page', url: '', notes: 'High conversion template', createdAt: '2025-09-20T10:00:00Z' },
-  { id: '3', name: 'Tilika Content Studio', status: 'in-progress', type: 'Automation', url: '', notes: 'Mac-Windows content automation', createdAt: '2025-10-01T10:00:00Z' },
+  { id: '1', name: 'Elas Espeto e Marmitaria', status: 'active', type: 'Delivery + Website',
+    url: 'https://elas-linktree.onrender.com', notes: 'Claudia Delivery system. API: https://claudia-delivery-api.onrender.com | Instagram: @elasespetoemarmitaria | Facebook: Ellos Marmitaria | WhatsApp: (67) 99645-0189 | Endereco: R. Tito Mello, Dourados-MS',
+    createdAt: '2025-08-15T10:00:00Z',
+    services: {
+      frontend: 'https://elas-linktree.onrender.com',
+      backend: 'https://claudia-delivery-api.onrender.com',
+      instagram: 'https://www.instagram.com/elasespetoemarmitaria/',
+      facebook: 'https://www.facebook.com/profile.php?id=61583765741772',
+      github: 'https://github.com/nexus-automacoes/claudia-delivery',
+      whatsapp: '5567996450189'
+    }
+  },
+  { id: '2', name: 'Diamond Formaturas', status: 'active', type: 'Landing Page',
+    url: '', notes: 'High conversion template. Design escuro + dourado. Instagram: @diamond.formaturas | Endereco: R. das Amoreiras 840, Dourados-MS',
+    createdAt: '2025-09-20T10:00:00Z' },
+  { id: '3', name: 'Tilika Content Studio', status: 'in-progress', type: 'Automation',
+    url: '', notes: 'Mac-Windows content automation. PSD: Arte_Feed.psd | Repo: tilika-ps-server | Server: 192.168.48.133:4000',
+    createdAt: '2025-10-01T10:00:00Z' },
 ]
 let clientIdCounter = 4
 
@@ -554,6 +569,181 @@ app.get('/api/system-info', async (req, res) => {
   }
 
   res.json(info)
+})
+
+// ============================================================
+// API: Windows Remote Control Commands
+// ============================================================
+
+const windowsCommands = {
+  system: [
+    { cmd: 'shutdown /s /t 60', label: 'Shutdown (60s)', level: 'danger' },
+    { cmd: 'shutdown /r /t 60', label: 'Restart (60s)', level: 'danger' },
+    { cmd: 'shutdown /a', label: 'Cancel Shutdown', level: 'safe' },
+    { cmd: 'rundll32.exe user32.dll,LockWorkStation', label: 'Lock Screen', level: 'moderate' },
+    { cmd: 'rundll32.exe powrprof.dll,SetSuspendState 0,1,0', label: 'Sleep', level: 'moderate' },
+  ],
+  processes: [
+    { cmd: 'powershell "Get-Process | Sort-Object CPU -Descending | Select-Object -First 20 Name,CPU,WorkingSet | ConvertTo-Json"', label: 'Top 20 Processes', level: 'safe' },
+    { cmd: 'tasklist /FO CSV', label: 'List All Processes', level: 'safe' },
+    { cmd: 'taskkill /IM {process} /F', label: 'Kill Process', level: 'moderate', param: 'process' },
+  ],
+  files: [
+    { cmd: 'dir {path}', label: 'List Directory', level: 'safe', param: 'path' },
+    { cmd: 'type {path}', label: 'Read File', level: 'safe', param: 'path' },
+    { cmd: 'powershell "Get-ChildItem -Path {path} -Recurse | Select Name,Length,LastWriteTime | ConvertTo-Json"', label: 'List Files (JSON)', level: 'safe', param: 'path' },
+  ],
+  network: [
+    { cmd: 'ipconfig', label: 'IP Config', level: 'safe' },
+    { cmd: 'netstat -an | findstr LISTENING', label: 'Listening Ports', level: 'safe' },
+    { cmd: 'ping -n 4 google.com', label: 'Ping Google', level: 'safe' },
+    { cmd: 'powershell "(Get-NetAdapter | Where Status -eq Up | Select Name,LinkSpeed,MacAddress | ConvertTo-Json)"', label: 'Network Adapters', level: 'safe' },
+  ],
+  sysinfo: [
+    { cmd: 'powershell "Get-CimInstance Win32_Processor | Select Name,LoadPercentage,NumberOfCores | ConvertTo-Json"', label: 'CPU Info', level: 'safe' },
+    { cmd: 'powershell "Get-CimInstance Win32_OperatingSystem | Select TotalVisibleMemorySize,FreePhysicalMemory,Caption | ConvertTo-Json"', label: 'Memory Info', level: 'safe' },
+    { cmd: 'powershell "Get-CimInstance Win32_LogicalDisk | Select DeviceID,Size,FreeSpace | ConvertTo-Json"', label: 'Disk Info', level: 'safe' },
+    { cmd: 'systeminfo', label: 'Full System Info', level: 'safe' },
+    { cmd: 'powershell "[System.Environment]::OSVersion | ConvertTo-Json"', label: 'OS Version', level: 'safe' },
+  ],
+  display: [
+    { cmd: 'powershell "Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.Screen]::AllScreens | ForEach { $_.Bounds } | ConvertTo-Json"', label: 'Screen Resolution', level: 'safe' },
+  ],
+  audio: [
+    { cmd: 'powershell "(New-Object -ComObject WScript.Shell).SendKeys([char]173)"', label: 'Toggle Mute', level: 'safe' },
+    { cmd: 'powershell "(New-Object -ComObject WScript.Shell).SendKeys([char]175)"', label: 'Volume Up', level: 'safe' },
+    { cmd: 'powershell "(New-Object -ComObject WScript.Shell).SendKeys([char]174)"', label: 'Volume Down', level: 'safe' },
+  ],
+  apps: [
+    { cmd: 'start chrome {url}', label: 'Open Chrome', level: 'safe', param: 'url' },
+    { cmd: 'start explorer {path}', label: 'Open Explorer', level: 'safe', param: 'path' },
+    { cmd: 'start notepad {path}', label: 'Open Notepad', level: 'safe', param: 'path' },
+    { cmd: 'start ms-settings:', label: 'Windows Settings', level: 'safe' },
+    { cmd: 'start "" "C:\\Program Files\\Adobe\\Adobe Photoshop 2024\\Photoshop.exe"', label: 'Open Photoshop', level: 'safe' },
+  ],
+  services: [
+    { cmd: 'powershell "Get-Service | Where Status -eq Running | Select Name,DisplayName | ConvertTo-Json"', label: 'Running Services', level: 'safe' },
+    { cmd: 'sc query {service}', label: 'Query Service', level: 'safe', param: 'service' },
+  ],
+  git: [
+    { cmd: 'git -C {path} status', label: 'Git Status', level: 'safe', param: 'path' },
+    { cmd: 'git -C {path} log --oneline -10', label: 'Git Log', level: 'safe', param: 'path' },
+    { cmd: 'git -C {path} pull', label: 'Git Pull', level: 'moderate', param: 'path' },
+  ],
+  photoshop: [
+    { cmd: 'ps-open-psd', label: 'Open PSD', level: 'safe' },
+    { cmd: 'ps-export-png', label: 'Export PNG', level: 'safe' },
+    { cmd: 'ps-list-layers', label: 'List Layers', level: 'safe' },
+    { cmd: 'ps-script', label: 'Run JSX Script', level: 'moderate' },
+  ],
+  claudia: [
+    { cmd: 'curl http://localhost:3333/api/health', label: 'Claudia API Health', level: 'safe' },
+    { cmd: 'curl http://localhost:3333/api/orders', label: 'List Orders', level: 'safe' },
+    { cmd: 'powershell "Get-Process -Name node | Select Id,ProcessName,CPU | ConvertTo-Json"', label: 'Node Processes', level: 'safe' },
+    { cmd: 'cd D:/Sistemas/claudia-delivery && git status', label: 'Claudia Git Status', level: 'safe' },
+  ]
+}
+
+app.get('/api/remote-commands', (req, res) => {
+  res.json({ ok: true, commands: windowsCommands })
+})
+
+app.post('/api/remote-execute', async (req, res) => {
+  const { cmd, params } = req.body
+  if (!cmd) return res.status(400).json({ error: 'cmd is required' })
+
+  let finalCmd = cmd
+  if (params && typeof params === 'object') {
+    for (const [key, val] of Object.entries(params)) {
+      finalCmd = finalCmd.replace('{' + key + '}', val)
+    }
+  }
+
+  messagesCount++
+  const entry = {
+    id: Date.now().toString(),
+    command: finalCmd,
+    source: 'remote-execute',
+    timestamp: new Date().toISOString(),
+    status: 'sent'
+  }
+
+  if (tunnelUrl) {
+    try {
+      const payload = JSON.stringify({
+        message: finalCmd,
+        from: 'phantom-remote',
+        type: 'remote-command',
+        timestamp: entry.timestamp
+      })
+      const result = await proxyToWindows('/send-to-windows', 'POST', payload, 15000)
+      entry.status = 'delivered'
+      entry.response = result
+    } catch (err) {
+      entry.status = 'error'
+      entry.response = err.message
+    }
+  } else {
+    entry.status = 'no-tunnel'
+    entry.response = 'No tunnel registered'
+  }
+
+  commandHistory.unshift(entry)
+  if (commandHistory.length > 100) commandHistory = commandHistory.slice(0, 100)
+  res.json({ ok: true, entry })
+})
+
+// ============================================================
+// API: Claudia Delivery Integration
+// ============================================================
+
+const claudiaApi = 'https://claudia-delivery-api.onrender.com'
+
+app.get('/api/claudia/health', async (req, res) => {
+  try {
+    const r = await fetch(claudiaApi + '/api/health')
+    const data = await r.json()
+    res.json({ ok: true, claudia: data })
+  } catch (e) {
+    res.json({ ok: false, error: e.message })
+  }
+})
+
+app.get('/api/claudia/orders', async (req, res) => {
+  try {
+    // Login first to get token
+    const loginRes = await fetch(claudiaApi + '/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'admin@claudia.com', password: 'claudia123' })
+    })
+    const loginData = await loginRes.json()
+    const token = loginData.token
+
+    const ordersRes = await fetch(claudiaApi + '/api/orders', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    })
+    const orders = await ordersRes.json()
+    res.json({ ok: true, orders })
+  } catch (e) {
+    res.json({ ok: false, error: e.message })
+  }
+})
+
+// ============================================================
+// API: Windows Services Status
+// ============================================================
+
+app.get('/api/windows-services', (req, res) => {
+  res.json({
+    ok: true,
+    services: [
+      { name: 'Claudia Delivery API', port: 3333, url: 'http://localhost:3333', status: 'running' },
+      { name: 'Claudia Frontend', port: 5173, url: 'http://localhost:5173', status: 'running' },
+      { name: 'Browser Agent (Playwright)', port: 3999, url: 'http://localhost:3999', status: 'running' },
+      { name: 'Messaging Server', port: 4000, url: 'http://localhost:4000', status: 'running' },
+    ]
+  })
 })
 
 // ============================================================
