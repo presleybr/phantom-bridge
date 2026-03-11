@@ -493,7 +493,7 @@
     <div class="login-title">PhantomBridge</div>
     <div class="login-sub">Remote Control Center</div>
     <input type="password" class="login-input" id="login-pass" placeholder="Enter password..." autofocus />
-    <button class="login-btn" onclick="doLogin()">Access Control Center</button>
+    <button class="login-btn" id="login-btn">Access Control Center</button>
     <div class="login-error" id="login-error"></div>
   </div>
 </div>
@@ -979,10 +979,13 @@ function doLogout() {
   localStorage.removeItem('phantom-auth');
   location.reload();
 }
-document.getElementById('login-pass').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
-if (checkAuth()) {
-  document.getElementById('login-overlay').classList.add('hidden');
-}
+document.addEventListener('DOMContentLoaded', function() {
+  document.getElementById('login-btn').addEventListener('click', doLogin);
+  document.getElementById('login-pass').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+  if (checkAuth()) {
+    document.getElementById('login-overlay').classList.add('hidden');
+  }
+});
 
 /* ═══════════════════════════════════════════════════════════════
    SIDEBAR & TABS
@@ -1375,7 +1378,7 @@ function initApp() {
   setInterval(refreshFast,5000);
 }
 
-if (checkAuth()) initApp();
+document.addEventListener('DOMContentLoaded', function() { if (checkAuth()) initApp(); });
 </script>
 </body>
 </html>
