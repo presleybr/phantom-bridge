@@ -2612,13 +2612,13 @@ function apiDelete(url) {
 
 function startBoot() {
   var bootScreen = $('#boot-screen');
-  var loginScreen = $('#login-screen');
+  var loginScreen = $('#login-overlay');
   var desktop = $('#desktop');
   if (!bootScreen) return;
   bootScreen.style.display = 'flex';
-  if (loginScreen) loginScreen.style.display = 'none';
+  if (loginScreen) loginScreen.classList.add('hidden');
   if (desktop) desktop.style.display = 'none';
-  var bar = bootScreen.querySelector('.boot-progress-fill');
+  var bar = bootScreen.querySelector('.boot-loader-bar');
   var pct = 0;
   var bootInterval = setInterval(function() {
     pct += Math.random() * 15 + 5;
@@ -2632,7 +2632,7 @@ function startBoot() {
         if (checkAuth()) {
           showDesktop();
         } else {
-          if (loginScreen) loginScreen.style.display = 'flex';
+          if (loginScreen) loginScreen.classList.remove('hidden');
         }
       }, 400);
     }
@@ -2650,8 +2650,8 @@ function doLogin() {
   if (pwd === 'phantom-2025') {
     localStorage.setItem('phantom-auth', 'true');
     state.loggedIn = true;
-    var loginScreen = $('#login-screen');
-    if (loginScreen) loginScreen.style.display = 'none';
+    var loginScreen = $('#login-overlay');
+    if (loginScreen) loginScreen.classList.add('hidden');
     showDesktop();
   } else {
     var err = $('#login-error');
@@ -2696,27 +2696,32 @@ function createWindow(appId, title, svgIcon, width, height) {
   var win = el('div', 'window');
   win.id = 'window-' + winId;
   win.setAttribute('data-winid', winId);
-  win.style.cssText = 'left:' + x + 'px;top:' + y + 'px;width:' + w + 'px;height:' + h + 'px;z-index:' + state.zCounter;
+  win.style.cssText = 'left:' + x + 'px;top:' + y + 'px;width:' + w + 'px;height:' + h + 'px;z-index:' + state.zCounter + ';pointer-events:auto';
 
   var titlebar = el('div', 'window-titlebar');
   titlebar.setAttribute('data-winid', winId);
 
-  var titleLeft = el('div', 'window-title-left');
-  titleLeft.innerHTML = '<span class="window-icon">' + (svgIcon || '') + '</span><span class="window-title-text">' + escapeHtml(title) + '</span>';
+  var titleIcon = el('span', '');
+  titleIcon.innerHTML = svgIcon || '';
+  titleIcon.style.display = 'flex';
+  titleIcon.style.alignItems = 'center';
+
+  var titleText = el('span', 'window-title');
+  titleText.textContent = title;
 
   var controls = el('div', 'window-controls');
 
-  var btnMin = el('button', 'window-btn window-btn-min');
+  var btnMin = el('button', 'window-ctrl-btn');
   btnMin.innerHTML = ICONS.minimize;
   btnMin.setAttribute('data-action', 'minimize');
   btnMin.setAttribute('data-winid', winId);
 
-  var btnMax = el('button', 'window-btn window-btn-max');
+  var btnMax = el('button', 'window-ctrl-btn');
   btnMax.innerHTML = ICONS.maximize;
   btnMax.setAttribute('data-action', 'maximize');
   btnMax.setAttribute('data-winid', winId);
 
-  var btnClose = el('button', 'window-btn window-btn-close');
+  var btnClose = el('button', 'window-ctrl-btn close');
   btnClose.innerHTML = ICONS.close;
   btnClose.setAttribute('data-action', 'close');
   btnClose.setAttribute('data-winid', winId);
@@ -2725,7 +2730,8 @@ function createWindow(appId, title, svgIcon, width, height) {
   controls.appendChild(btnMax);
   controls.appendChild(btnClose);
 
-  titlebar.appendChild(titleLeft);
+  titlebar.appendChild(titleIcon);
+  titlebar.appendChild(titleText);
   titlebar.appendChild(controls);
 
   var body = el('div', 'window-body');
@@ -2750,7 +2756,7 @@ function createWindow(appId, title, svgIcon, width, height) {
   });
 
   titlebar.addEventListener('mousedown', function(e) {
-    if (e.target.closest('.window-btn')) return;
+    if (e.target.closest('.window-ctrl-btn')) return;
     drag.active = true;
     drag.windowId = winId;
     drag.offsetX = e.clientX - win.offsetLeft;
@@ -2841,9 +2847,9 @@ function focusWindow(winId) {
   Object.keys(state.windows).forEach(function(id) {
     var w = state.windows[id];
     if (id === winId) {
-      w.el.classList.add('window-active');
+      w.el.classList.add('focused');
     } else {
-      w.el.classList.remove('window-active');
+      w.el.classList.remove('focused');
     }
   });
   updateTaskbar();
@@ -2857,25 +2863,22 @@ function getWindowBody(winId) {
 /* Part 4: Taskbar, Start Menu, Clock, Context Menu */
 
 function updateTaskbar() {
-  var taskItems = $('#taskbar-items');
-  if (!taskItems) return;
-  taskItems.innerHTML = '';
-  Object.keys(state.windows).forEach(function(winId) {
-    var winData = state.windows[winId];
-    var appDef = apps[winData.app];
-    var item = el('div', 'taskbar-item' + (state.activeWindow === winId ? ' taskbar-item-active' : '') + (winData.minimized ? ' taskbar-item-minimized' : ''));
-    item.innerHTML = (appDef ? appDef.icon : '') + '<span>' + escapeHtml(appDef ? appDef.title : winId) + '</span>';
-    item.setAttribute('data-winid', winId);
-    item.addEventListener('click', function() {
-      if (winData.minimized) {
-        minimizeWindow(winId);
-      } else if (state.activeWindow === winId) {
-        minimizeWindow(winId);
+  var taskbarApps = $('#taskbar-apps');
+  if (!taskbarApps) return;
+  var btns = taskbarApps.querySelectorAll('.taskbar-app-btn');
+  btns.forEach(function(btn) {
+    var appId = btn.getAttribute('data-app');
+    var winData = state.windows[appId];
+    if (winData) {
+      btn.classList.add('active');
+      if (state.activeWindow === appId && !winData.minimized) {
+        btn.classList.add('focused');
       } else {
-        focusWindow(winId);
+        btn.classList.remove('focused');
       }
-    });
-    taskItems.appendChild(item);
+    } else {
+      btn.classList.remove('active', 'focused');
+    }
   });
 }
 
@@ -2890,7 +2893,11 @@ function toggleStartMenu() {
   state.startMenuOpen = !state.startMenuOpen;
   var menu = $('#start-menu');
   if (menu) {
-    menu.style.display = state.startMenuOpen ? 'flex' : 'none';
+    if (state.startMenuOpen) {
+      menu.classList.add('visible');
+    } else {
+      menu.classList.remove('visible');
+    }
   }
   if (state.startMenuOpen) {
     hideNotifPanel();
@@ -2901,86 +2908,62 @@ function toggleStartMenu() {
 function hideStartMenu() {
   state.startMenuOpen = false;
   var menu = $('#start-menu');
-  if (menu) menu.style.display = 'none';
+  if (menu) menu.classList.remove('visible');
 }
 
 function filterStartApps(query) {
   var items = $$('.start-app-item');
   query = (query || '').toLowerCase();
   items.forEach(function(item) {
-    var name = (item.getAttribute('data-appname') || '').toLowerCase();
-    item.style.display = name.indexOf(query) >= 0 ? 'flex' : 'none';
+    var name = (item.getAttribute('data-app') || '').toLowerCase();
+    var label = (item.querySelector('span') || {}).textContent || '';
+    var match = name.indexOf(query) >= 0 || label.toLowerCase().indexOf(query) >= 0;
+    item.style.display = match ? 'flex' : 'none';
   });
 }
 
 function buildStartMenu() {
   var menu = $('#start-menu');
   if (!menu) return;
-  menu.innerHTML = '';
 
-  var searchBox = el('div', 'start-search');
-  searchBox.innerHTML = ICONS.search + '<input type="text" placeholder="Search apps..." id="start-search-input" />';
-  menu.appendChild(searchBox);
-
-  var appList = el('div', 'start-app-list');
-  Object.keys(apps).forEach(function(appId) {
-    var app = apps[appId];
-    var item = el('div', 'start-app-item');
-    item.setAttribute('data-app', appId);
-    item.setAttribute('data-appname', app.title);
-    item.innerHTML = '<span class="start-app-icon">' + app.icon + '</span><span class="start-app-name">' + escapeHtml(app.title) + '</span>';
-    item.addEventListener('click', function() {
-      openApp(appId);
-      hideStartMenu();
-    });
-    appList.appendChild(item);
-  });
-  menu.appendChild(appList);
-
-  var footer = el('div', 'start-footer');
-  var logoutBtn = el('button', 'start-logout-btn');
-  logoutBtn.innerHTML = ICONS.power + ' Logout';
-  logoutBtn.addEventListener('click', doLogout);
-  footer.appendChild(logoutBtn);
-  menu.appendChild(footer);
-
-  setTimeout(function() {
-    var si = $('#start-search-input');
-    if (si) {
-      si.addEventListener('input', function() { filterStartApps(this.value); });
+  /* Wire up click handlers on existing start menu app items */
+  var items = menu.querySelectorAll('.start-app-item');
+  items.forEach(function(item) {
+    var appId = item.getAttribute('data-app');
+    if (appId) {
+      item.addEventListener('click', function() {
+        openApp(appId);
+        hideStartMenu();
+      });
     }
-  }, 50);
+  });
+
+  /* Search input */
+  var si = $('#start-search-input');
+  if (si) {
+    si.addEventListener('input', function() { filterStartApps(this.value); });
+  }
+
+  /* Power button */
+  var powerBtn = $('#power-btn');
+  if (powerBtn) {
+    powerBtn.addEventListener('click', doLogout);
+  }
 }
 
 function showContextMenu(x, y) {
   hideContextMenu();
-  var menu = el('div', 'context-menu');
-  menu.style.cssText = 'left:' + x + 'px;top:' + y + 'px;';
-
-  var items = [
-    { label: 'Refresh', icon: ICONS.refresh, action: function() { refreshAll(); showToast('Refreshed', '#3b82f6'); } },
-    { label: 'New Terminal', icon: ICONS.terminal, action: function() { openApp('terminal'); } },
-    { label: 'Settings', icon: ICONS.settings, action: function() { openApp('settings'); } },
-    { label: 'About', icon: ICONS.ai, action: function() { alert('PhantomOS v2.0\nWeb Operating System\nRemote Windows Control'); } }
-  ];
-
-  items.forEach(function(item) {
-    var row = el('div', 'context-menu-item');
-    row.innerHTML = '<span class="context-icon">' + item.icon + '</span>' + escapeHtml(item.label);
-    row.addEventListener('click', function() {
-      hideContextMenu();
-      item.action();
-    });
-    menu.appendChild(row);
-  });
-
-  document.body.appendChild(menu);
+  var menu = $('#context-menu');
+  if (!menu) return;
+  menu.style.left = x + 'px';
+  menu.style.top = y + 'px';
+  menu.classList.add('visible');
   state.contextMenuOpen = true;
 }
 
 function hideContextMenu() {
-  var existing = document.querySelectorAll('.context-menu');
-  existing.forEach(function(m) { if (m.parentNode) m.parentNode.removeChild(m); });
+  var menu = $('#context-menu');
+  if (menu) menu.classList.remove('visible');
   state.contextMenuOpen = false;
 }
 
@@ -3006,17 +2989,17 @@ function updateNotifBadge() {
 
 function showNotifPanel() {
   state.notifPanelOpen = true;
-  var panel = $('#notif-panel');
+  var panel = $('#notification-panel');
   if (!panel) return;
-  panel.style.display = 'flex';
+  panel.classList.add('visible');
   renderNotifPanel();
   hideStartMenu();
 }
 
 function hideNotifPanel() {
   state.notifPanelOpen = false;
-  var panel = $('#notif-panel');
-  if (panel) panel.style.display = 'none';
+  var panel = $('#notification-panel');
+  if (panel) panel.classList.remove('visible');
 }
 
 function toggleNotifPanel() {
@@ -3025,29 +3008,19 @@ function toggleNotifPanel() {
 }
 
 function renderNotifPanel() {
-  var panel = $('#notif-panel');
-  if (!panel) return;
-  panel.innerHTML = '';
+  var list = $('#notif-list');
+  if (!list) return;
 
-  var header = el('div', 'notif-header');
-  header.innerHTML = '<span>Notifications</span>';
-  var markBtn = el('button', 'notif-mark-btn');
-  markBtn.textContent = 'Mark all read';
-  markBtn.addEventListener('click', markAllRead);
-  header.appendChild(markBtn);
-  panel.appendChild(header);
-
-  var list = el('div', 'notif-list');
   if (state.notifications.length === 0) {
     list.innerHTML = '<div class="notif-empty">No notifications</div>';
   } else {
+    list.innerHTML = '';
     state.notifications.slice(0, 20).forEach(function(n) {
       var item = el('div', 'notif-item' + (n.read ? '' : ' notif-unread'));
       item.innerHTML = '<div class="notif-title">' + escapeHtml(n.title || 'Notification') + '</div><div class="notif-body">' + escapeHtml(n.message || n.body || '') + '</div><div class="notif-time">' + escapeHtml(n.timestamp || '') + '</div>';
       list.appendChild(item);
     });
   }
-  panel.appendChild(list);
 }
 
 function markAllRead() {
@@ -4197,31 +4170,7 @@ function openApp(appId) {
 /* Part 16: Desktop Icons */
 
 function initDesktopIcons() {
-  var container = $('#desktop-icons');
-  if (!container) return;
-  container.innerHTML = '';
-
-  var iconList = [
-    { app: 'terminal',  label: 'Terminal' },
-    { app: 'files',     label: 'Files' },
-    { app: 'messages',  label: 'Messages' },
-    { app: 'ai',        label: 'AI Assistant' },
-    { app: 'photoshop', label: 'Photoshop' },
-    { app: 'monitor',   label: 'Monitor' },
-    { app: 'clients',   label: 'Clients' },
-    { app: 'settings',  label: 'Settings' }
-  ];
-
-  iconList.forEach(function(item) {
-    var icon = el('div', 'desktop-icon');
-    icon.setAttribute('data-app', item.app);
-    var appDef = apps[item.app];
-    icon.innerHTML = '<div class="desktop-icon-img">' + (appDef ? appDef.icon : '') + '</div><div class="desktop-icon-label">' + escapeHtml(item.label) + '</div>';
-    icon.addEventListener('dblclick', function() {
-      openApp(item.app);
-    });
-    container.appendChild(icon);
-  });
+  /* Desktop icons are pre-built in HTML; dblclick handlers are wired in DOMContentLoaded */
 }
 
 /* Part 17: Data Fetching / Refresh */
@@ -4285,7 +4234,7 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   /* Notification bell */
-  var notifBtn = $('#notif-btn');
+  var notifBtn = $('#notification-btn');
   if (notifBtn) {
     notifBtn.addEventListener('click', function(e) {
       e.stopPropagation();
@@ -4310,7 +4259,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (state.startMenuOpen && !e.target.closest('#start-menu') && !e.target.closest('#start-btn')) {
       hideStartMenu();
     }
-    if (state.notifPanelOpen && !e.target.closest('#notif-panel') && !e.target.closest('#notif-btn')) {
+    if (state.notifPanelOpen && !e.target.closest('#notification-panel') && !e.target.closest('#notification-btn')) {
       hideNotifPanel();
     }
     if (state.contextMenuOpen) {
@@ -4319,7 +4268,7 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 
   /* Right-click context menu on desktop */
-  var desktopArea = $('#desktop-area');
+  var desktopArea = $('#desktop');
   if (desktopArea) {
     desktopArea.addEventListener('contextmenu', function(e) {
       if (e.target.closest('.window') || e.target.closest('.desktop-icon')) return;
@@ -4330,7 +4279,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   /* Prevent default context menu on windows */
   document.addEventListener('contextmenu', function(e) {
-    if (e.target.closest('#desktop-area') && !e.target.closest('.window') && !e.target.closest('.desktop-icon')) {
+    if (e.target.closest('#desktop') && !e.target.closest('.window') && !e.target.closest('.desktop-icon')) {
       e.preventDefault();
     }
   });
@@ -4339,6 +4288,55 @@ document.addEventListener('DOMContentLoaded', function() {
   var styleTag = document.createElement('style');
   styleTag.textContent = '@keyframes toastIn{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}@keyframes toastOut{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(20px)}}';
   document.head.appendChild(styleTag);
+
+  /* Taskbar app button clicks */
+  var taskbarAppBtns = $$('#taskbar-apps .taskbar-app-btn');
+  taskbarAppBtns.forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var appId = btn.getAttribute('data-app');
+      if (!appId) return;
+      var winData = state.windows[appId];
+      if (winData) {
+        if (winData.minimized) {
+          minimizeWindow(appId);
+        } else if (state.activeWindow === appId) {
+          minimizeWindow(appId);
+        } else {
+          focusWindow(appId);
+        }
+      } else {
+        openApp(appId);
+      }
+    });
+  });
+
+  /* Desktop icon double-click */
+  var desktopIcons = $$('.desktop-icon');
+  desktopIcons.forEach(function(icon) {
+    var appId = icon.getAttribute('data-app');
+    if (appId) {
+      icon.addEventListener('dblclick', function() { openApp(appId); });
+    }
+  });
+
+  /* Context menu items */
+  var ctxItems = $$('#context-menu .ctx-item');
+  ctxItems.forEach(function(item) {
+    var action = item.getAttribute('data-action');
+    item.addEventListener('click', function() {
+      hideContextMenu();
+      if (action === 'refresh') { refreshAll(); showToast('Refreshed', '#3b82f6'); }
+      else if (action === 'new-window') { openApp('terminal'); }
+      else if (action === 'settings') { openApp('settings'); }
+      else if (action === 'about') { alert('PhantomOS v2.0\nWeb Operating System\nRemote Windows Control'); }
+    });
+  });
+
+  /* Notif clear button */
+  var clearBtn = $('#notif-clear-btn');
+  if (clearBtn) {
+    clearBtn.addEventListener('click', function() { markAllRead(); });
+  }
 
   /* Start boot sequence */
   startBoot();
