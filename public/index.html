@@ -1633,6 +1633,430 @@ body::before {
   .monitor-network { grid-template-columns: 1fr; }
 }
 @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+/* ── CONTEÚDO DAS JANELAS ───────────────────── */
+
+/* Reset base para todo conteúdo de janela */
+.window-body {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  height: 100%;
+}
+
+/* Tabela padrão das janelas */
+.wb-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.wb-table thead th {
+  padding: 10px 14px;
+  text-align: left;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.35);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  white-space: nowrap;
+}
+
+.wb-table tbody tr {
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  transition: background 0.1s;
+}
+
+.wb-table tbody tr:last-child { border-bottom: none; }
+.wb-table tbody tr:hover { background: rgba(255,255,255,0.03); }
+.wb-table tbody td { padding: 10px 14px; vertical-align: middle; }
+
+/* Badges inline */
+.wb-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.wb-badge.green  { background: rgba(0,208,132,0.12);  color: #00d084; }
+.wb-badge.blue   { background: rgba(59,130,246,0.12);  color: #3b82f6; }
+.wb-badge.yellow { background: rgba(245,158,11,0.12);  color: #f59e0b; }
+.wb-badge.red    { background: rgba(239,68,68,0.12);   color: #ef4444; }
+.wb-badge.purple { background: rgba(124,58,237,0.12);  color: #a78bfa; }
+.wb-badge.gray   { background: rgba(255,255,255,0.07); color: rgba(255,255,255,0.5); }
+
+/* Botões de ação inline */
+.wb-action-btn {
+  padding: 4px 9px;
+  border-radius: 6px;
+  font-size: 11px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: transparent;
+  color: rgba(255,255,255,0.4);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.wb-action-btn:hover {
+  background: rgba(255,255,255,0.07);
+  color: rgba(255,255,255,0.9);
+  border-color: rgba(255,255,255,0.15);
+}
+
+/* Toolbar topo de janela */
+.wb-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  flex-shrink: 0;
+}
+
+.wb-toolbar-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.04);
+  color: rgba(255,255,255,0.8);
+  transition: all 0.15s;
+  font-family: inherit;
+}
+
+.wb-toolbar-btn:hover { background: rgba(255,255,255,0.08); }
+
+.wb-toolbar-btn.primary {
+  background: var(--accent, #7c3aed);
+  border-color: var(--accent, #7c3aed);
+  color: white;
+}
+
+.wb-toolbar-btn.primary:hover { filter: brightness(1.1); }
+
+.wb-toolbar input {
+  flex: 1;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 7px;
+  padding: 6px 10px;
+  color: rgba(255,255,255,0.9);
+  font-size: 12px;
+  font-family: inherit;
+  outline: none;
+  min-width: 0;
+}
+
+.wb-toolbar input:focus { border-color: rgba(124,58,237,0.6); }
+
+/* Área scrollável de tabela */
+.wb-scroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.wb-scroll::-webkit-scrollbar { width: 4px; }
+.wb-scroll::-webkit-scrollbar-track { background: transparent; }
+.wb-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+
+/* Avatar mini */
+.wb-avatar {
+  width: 26px; height: 26px; border-radius: 50%;
+  background: linear-gradient(135deg, #7c3aed, #3b82f6);
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 700; color: white; flex-shrink: 0;
+}
+
+/* ── TERMINAL v2 ───────────────────────────────── */
+.term-output-v2 {
+  flex: 1;
+  padding: 14px 16px;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+  font-size: 12px;
+  line-height: 1.7;
+  color: #00d084;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.term-output-v2::-webkit-scrollbar { width: 4px; }
+.term-output-v2::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+
+.term-input-row-v2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px 10px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  flex-shrink: 0;
+}
+
+.term-prompt-v2 {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: #7c3aed;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.term-input-v2 {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  color: #00d084;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 12px;
+  caret-color: #00d084;
+}
+
+/* ── FILES v2 ──────────────────────────────────── */
+.files-path-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  flex-shrink: 0;
+}
+
+.files-path-input {
+  flex: 1;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 6px;
+  padding: 5px 10px;
+  color: rgba(255,255,255,0.7);
+  font-size: 12px;
+  font-family: 'JetBrains Mono', monospace;
+  outline: none;
+}
+
+.files-nav-btn {
+  padding: 5px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.04);
+  color: rgba(255,255,255,0.5);
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.15s;
+}
+
+.files-nav-btn:hover { background: rgba(255,255,255,0.08); color: white; }
+.files-nav-btn:disabled { opacity: 0.3; cursor: default; }
+
+.file-row-v2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  cursor: pointer;
+  transition: background 0.1s;
+  font-size: 13px;
+}
+
+.file-row-v2:hover { background: rgba(255,255,255,0.04); }
+.file-row-v2:last-child { border-bottom: none; }
+
+.file-icon-v2 { font-size: 16px; flex-shrink: 0; width: 22px; text-align: center; }
+.file-name-v2 { flex: 1; color: rgba(255,255,255,0.85); }
+.file-size-v2 { font-size: 11px; color: rgba(255,255,255,0.3); white-space: nowrap; }
+.file-type-v2 { font-size: 11px; color: rgba(255,255,255,0.3); width: 60px; text-align: right; }
+
+/* ── MESSAGES v2 ───────────────────────────────── */
+.msgs-tabs {
+  display: flex;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  flex-shrink: 0;
+}
+
+.msgs-tab {
+  flex: 1;
+  padding: 10px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(255,255,255,0.35);
+  cursor: pointer;
+  transition: all 0.15s;
+  border-bottom: 2px solid transparent;
+}
+
+.msgs-tab.active {
+  color: rgba(255,255,255,0.9);
+  border-bottom-color: #7c3aed;
+}
+
+.msgs-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.msgs-list::-webkit-scrollbar { width: 4px; }
+.msgs-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+
+.msg-bubble {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 12px;
+}
+
+.msg-bubble-time {
+  font-size: 10px;
+  color: rgba(255,255,255,0.3);
+  margin-bottom: 3px;
+}
+
+.msg-bubble-text { color: rgba(255,255,255,0.85); line-height: 1.4; }
+
+.msgs-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: rgba(255,255,255,0.2);
+}
+
+.msgs-send-row {
+  display: flex;
+  gap: 6px;
+  padding: 8px 10px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  flex-shrink: 0;
+}
+
+.msgs-input {
+  flex: 1;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px;
+  padding: 7px 10px;
+  color: rgba(255,255,255,0.9);
+  font-size: 12px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.msgs-input:focus { border-color: rgba(124,58,237,0.5); }
+
+.msgs-send-btn {
+  padding: 7px 14px;
+  border-radius: 8px;
+  background: #7c3aed;
+  border: none;
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: filter 0.15s;
+  white-space: nowrap;
+  font-family: inherit;
+}
+
+.msgs-send-btn:hover { filter: brightness(1.1); }
+
+/* ── SETTINGS v2 ───────────────────────────────── */
+.settings-layout {
+  display: flex;
+  height: 100%;
+}
+
+.settings-nav {
+  width: 150px;
+  border-right: 1px solid rgba(255,255,255,0.06);
+  padding: 10px 6px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.settings-nav-item {
+  padding: 8px 10px;
+  border-radius: 7px;
+  font-size: 12px;
+  color: rgba(255,255,255,0.4);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.settings-nav-item:hover { background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.8); }
+.settings-nav-item.active { background: rgba(124,58,237,0.15); color: rgba(255,255,255,0.9); }
+
+.settings-content-v2 {
+  flex: 1;
+  padding: 16px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.settings-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  background: rgba(255,255,255,0.025);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 8px;
+}
+
+.settings-row-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.3);
+}
+
+.settings-row-value {
+  font-size: 13px;
+  color: rgba(255,255,255,0.8);
+}
+
+.settings-row-value.online  { color: #00d084; }
+.settings-row-value.offline { color: #ef4444; }
+
+.settings-refresh-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.04);
+  color: rgba(255,255,255,0.6);
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: inherit;
+}
+
+.settings-refresh-btn:hover { background: rgba(255,255,255,0.08); color: white; }
 </style>
 </head>
 <body>
@@ -3097,393 +3521,336 @@ function fetchStatus() {
 
 function initTerminal(windowBody) {
   windowBody.innerHTML = '';
-  windowBody.classList.add('app-terminal');
+  windowBody.style.cssText = 'display:flex;flex-direction:column;height:100%;overflow:hidden;background:#0a0e14';
 
-  var toolbar = el('div', 'term-toolbar');
-  var presetSel = el('select', 'term-preset');
-  presetSel.innerHTML = '<option value="">-- Presets --</option>' +
-    '<option value="systeminfo">System Info</option>' +
-    '<option value="tasklist">Task List</option>' +
-    '<option value="ipconfig">IP Config</option>' +
-    '<option value="dir C:\\">Dir C:</option>' +
-    '<option value="whoami">Who Am I</option>' +
-    '<option value="hostname">Hostname</option>';
-  presetSel.addEventListener('change', function() {
-    if (this.value) {
-      termExec(winId, this.value);
-      this.selectedIndex = 0;
-    }
+  windowBody.innerHTML =
+    '<div class="wb-toolbar" style="background:#0d1117">' +
+      '<select id="term-presets" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:5px 8px;color:rgba(255,255,255,0.7);font-size:11px;outline:none;cursor:pointer">' +
+        '<option value="">-- Presets --</option>' +
+        '<option value="ipconfig">ipconfig</option>' +
+        '<option value="dir C:\\">dir C:\\</option>' +
+        '<option value="tasklist">tasklist</option>' +
+        '<option value="systeminfo">systeminfo</option>' +
+        '<option value="netstat -an">netstat -an</option>' +
+        '<option value="whoami">whoami</option>' +
+        '<option value="hostname">hostname</option>' +
+      '</select>' +
+      '<button class="wb-toolbar-btn" id="term-clear-btn" style="font-size:11px">Limpar</button>' +
+    '</div>' +
+    '<div class="term-output-v2" id="term-output">PhantomOS Terminal v2.0\nDigite "help" para ver os comandos disponiveis.\n\n</div>' +
+    '<div class="term-input-row-v2">' +
+      '<span class="term-prompt-v2">phantom&nbsp;\u203a</span>' +
+      '<input class="term-input-v2" id="term-input" placeholder="comando..." autocomplete="off" spellcheck="false"/>' +
+    '</div>';
+
+  var input = document.getElementById('term-input');
+  var output = document.getElementById('term-output');
+  var presets = document.getElementById('term-presets');
+  var clearBtn = document.getElementById('term-clear-btn');
+
+  if (clearBtn) clearBtn.addEventListener('click', function() { if (output) output.textContent = ''; });
+  if (presets) presets.addEventListener('change', function() {
+    if (this.value && input) { input.value = this.value; input.focus(); }
+    this.value = '';
   });
-  toolbar.appendChild(presetSel);
 
-  var clearBtn = el('button', 'term-btn');
-  clearBtn.textContent = 'Clear';
-  clearBtn.addEventListener('click', function() {
-    var output = windowBody.querySelector('.term-output');
-    if (output) output.innerHTML = '';
-  });
-  toolbar.appendChild(clearBtn);
-  windowBody.appendChild(toolbar);
+  if (input) {
+    input.addEventListener('keydown', function(e) {
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (state.termHistIdx > 0) { state.termHistIdx--; input.value = state.termHistory[state.termHistIdx] || ''; }
+        return;
+      }
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (state.termHistIdx < state.termHistory.length - 1) { state.termHistIdx++; input.value = state.termHistory[state.termHistIdx] || ''; }
+        else { state.termHistIdx = state.termHistory.length; input.value = ''; }
+        return;
+      }
+      if (e.key !== 'Enter') return;
 
-  var output = el('div', 'term-output');
-  output.innerHTML = '<div class="term-line term-info">PhantomOS Terminal v2.0</div><div class="term-line term-info">Type "help" for available commands.</div><div class="term-line">&nbsp;</div>';
-  windowBody.appendChild(output);
-
-  var inputRow = el('div', 'term-input-row');
-  inputRow.innerHTML = '<span class="term-prompt">phantom &gt;</span>';
-  var inp = el('input', 'term-input');
-  inp.type = 'text';
-  inp.setAttribute('autocomplete', 'off');
-  inp.setAttribute('spellcheck', 'false');
-  inputRow.appendChild(inp);
-  windowBody.appendChild(inputRow);
-
-  var winId = Object.keys(state.windows).pop();
-
-  inp.addEventListener('keydown', function(e) {
-    if (e.key === 'Enter') {
-      var cmd = inp.value.trim();
+      var cmd = input.value.trim();
       if (!cmd) return;
+      input.value = '';
       state.termHistory.push(cmd);
       state.termHistIdx = state.termHistory.length;
-      termExec(winId, cmd);
-      inp.value = '';
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      if (state.termHistIdx > 0) {
-        state.termHistIdx--;
-        inp.value = state.termHistory[state.termHistIdx] || '';
-      }
-    } else if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      if (state.termHistIdx < state.termHistory.length - 1) {
-        state.termHistIdx++;
-        inp.value = state.termHistory[state.termHistIdx] || '';
+
+      output.textContent += 'phantom \u203a ' + cmd + '\n';
+
+      var lower = cmd.toLowerCase().trim();
+      if (lower === 'help') {
+        output.textContent += 'Comandos disponiveis:\n' +
+          '  help          \u2014 esta ajuda\n' +
+          '  clear         \u2014 limpar terminal\n' +
+          '  status        \u2014 status da bridge\n' +
+          '  health        \u2014 health check\n' +
+          '  tunnel        \u2014 tunnel URL\n' +
+          '  ping          \u2014 ping Windows\n' +
+          '  history       \u2014 historico\n' +
+          '  whoami        \u2014 usuario atual\n' +
+          '  date          \u2014 data atual\n' +
+          '  uptime        \u2014 uptime do sistema\n' +
+          '  logout        \u2014 sair\n' +
+          '  [qualquer]    \u2014 envia pro Windows via bridge\n\n';
+      } else if (lower === 'clear') {
+        output.textContent = '';
+      } else if (lower === 'status') {
+        apiGet('/status').then(function(data) {
+          if (data) {
+            output.textContent += 'Status: ' + (data.ok ? 'ONLINE \u2713' : 'OFFLINE') + '\n';
+            output.textContent += 'Tunnel: ' + (data.tunnel || 'N/A') + '\n';
+            output.textContent += 'Last Seen: ' + (data.lastSeen || 'N/A') + '\n\n';
+          } else {
+            output.textContent += 'Erro ao buscar status\n\n';
+          }
+          output.scrollTop = output.scrollHeight;
+        });
+      } else if (lower === 'health') {
+        apiGet('/health').then(function(data) {
+          if (data) {
+            output.textContent += 'OK: ' + (data.ok ? 'YES' : 'NO') + '\nBridge: ' + (data.bridge || 'N/A') + '\nTunnel: ' + (data.tunnel || 'N/A') + '\n\n';
+          } else {
+            output.textContent += 'Health check failed\n\n';
+          }
+          output.scrollTop = output.scrollHeight;
+        });
+      } else if (lower === 'tunnel') {
+        output.textContent += 'Tunnel: ' + (state.tunnelUrl || 'Not available') + '\n\n';
+      } else if (lower === 'ping') {
+        output.textContent += 'Pinging...\n';
+        apiPost('/api/ping').then(function(data) {
+          if (data && data.ok) { output.textContent += 'Pong! Latency: ' + (data.latency || '?') + 'ms\n\n'; }
+          else { output.textContent += 'Ping failed\n\n'; }
+          output.scrollTop = output.scrollHeight;
+        });
+      } else if (lower === 'history') {
+        state.termHistory.forEach(function(h, i) { output.textContent += '  ' + (i+1) + '. ' + h + '\n'; });
+        output.textContent += '\n';
+      } else if (lower === 'whoami') {
+        output.textContent += 'phantom@phantomos\n\n';
+      } else if (lower === 'date') {
+        output.textContent += new Date().toString() + '\n\n';
+      } else if (lower === 'uptime') {
+        apiGet('/api/stats').then(function(data) {
+          output.textContent += 'Uptime: ' + (data && data.uptime ? data.uptime : 'unknown') + '\n\n';
+          output.scrollTop = output.scrollHeight;
+        });
+      } else if (lower === 'logout') {
+        doLogout();
       } else {
-        state.termHistIdx = state.termHistory.length;
-        inp.value = '';
-      }
-    }
-  });
-
-  setTimeout(function() { inp.focus(); }, 100);
-}
-
-function termExec(winId, cmd) {
-  var winData = state.windows[winId];
-  if (!winData) return;
-  var output = winData.body.querySelector('.term-output');
-  if (!output) return;
-
-  output.innerHTML += '<div class="term-line"><span class="term-prompt">phantom &gt;</span> ' + escapeHtml(cmd) + '</div>';
-
-  var lower = cmd.toLowerCase().trim();
-
-  if (lower === 'help') {
-    output.innerHTML += '<div class="term-line term-info">Built-in commands:</div>' +
-      '<div class="term-line">  help       - Show this help</div>' +
-      '<div class="term-line">  clear      - Clear terminal</div>' +
-      '<div class="term-line">  status     - Bridge status</div>' +
-      '<div class="term-line">  health     - Health check</div>' +
-      '<div class="term-line">  tunnel     - Show tunnel URL</div>' +
-      '<div class="term-line">  ping       - Ping Windows</div>' +
-      '<div class="term-line">  history    - Command history</div>' +
-      '<div class="term-line">  whoami     - Current user</div>' +
-      '<div class="term-line">  date       - Current date</div>' +
-      '<div class="term-line">  uptime     - System uptime</div>' +
-      '<div class="term-line">  logout     - Logout</div>' +
-      '<div class="term-line term-info">Other commands are sent to Windows.</div>';
-  } else if (lower === 'clear') {
-    output.innerHTML = '';
-  } else if (lower === 'status') {
-    output.innerHTML += '<div class="term-line term-info">Fetching status...</div>';
-    apiGet('/status').then(function(data) {
-      if (data) {
-        output.innerHTML += '<div class="term-line">Online: ' + (data.ok ? 'YES' : 'NO') + '</div>' +
-          '<div class="term-line">Tunnel: ' + escapeHtml(data.tunnel || 'N/A') + '</div>' +
-          '<div class="term-line">Last Seen: ' + escapeHtml(data.lastSeen || 'N/A') + '</div>';
-      } else {
-        output.innerHTML += '<div class="term-line term-error">Failed to fetch status</div>';
+        output.textContent += 'Enviando para Windows...\n';
+        apiPost('/api/command', { command: cmd, type: 'cmd' }).then(function(data) {
+          if (data) {
+            var result = data.result || data.output || data.message || JSON.stringify(data);
+            output.textContent += result + '\n\n';
+          } else {
+            output.textContent += 'Comando falhou ou sem resposta\n\n';
+          }
+          output.scrollTop = output.scrollHeight;
+        });
       }
       output.scrollTop = output.scrollHeight;
     });
-  } else if (lower === 'health') {
-    apiGet('/health').then(function(data) {
-      if (data) {
-        output.innerHTML += '<div class="term-line">OK: ' + (data.ok ? 'YES' : 'NO') + '</div>' +
-          '<div class="term-line">Bridge: ' + escapeHtml(String(data.bridge || 'N/A')) + '</div>' +
-          '<div class="term-line">Tunnel: ' + escapeHtml(String(data.tunnel || 'N/A')) + '</div>';
-      } else {
-        output.innerHTML += '<div class="term-line term-error">Health check failed</div>';
-      }
-      output.scrollTop = output.scrollHeight;
-    });
-  } else if (lower === 'tunnel') {
-    output.innerHTML += '<div class="term-line">Tunnel: ' + escapeHtml(state.tunnelUrl || 'Not available') + '</div>';
-  } else if (lower === 'ping') {
-    output.innerHTML += '<div class="term-line term-info">Pinging...</div>';
-    apiPost('/api/ping').then(function(data) {
-      if (data && data.ok) {
-        output.innerHTML += '<div class="term-line term-success">Pong! Latency: ' + (data.latency || '?') + 'ms</div>';
-      } else {
-        output.innerHTML += '<div class="term-line term-error">Ping failed</div>';
-      }
-      output.scrollTop = output.scrollHeight;
-    });
-  } else if (lower === 'history') {
-    state.termHistory.forEach(function(h, i) {
-      output.innerHTML += '<div class="term-line">  ' + (i + 1) + '. ' + escapeHtml(h) + '</div>';
-    });
-  } else if (lower === 'whoami') {
-    output.innerHTML += '<div class="term-line">phantom@phantomos</div>';
-  } else if (lower === 'date') {
-    output.innerHTML += '<div class="term-line">' + new Date().toString() + '</div>';
-  } else if (lower === 'uptime') {
-    apiGet('/api/stats').then(function(data) {
-      if (data && data.uptime) {
-        output.innerHTML += '<div class="term-line">Uptime: ' + escapeHtml(String(data.uptime)) + '</div>';
-      } else {
-        output.innerHTML += '<div class="term-line">Uptime: unknown</div>';
-      }
-      output.scrollTop = output.scrollHeight;
-    });
-  } else if (lower === 'logout') {
-    doLogout();
-  } else {
-    output.innerHTML += '<div class="term-line term-info">Sending to Windows...</div>';
-    apiPost('/api/command', { command: cmd, type: 'cmd' }).then(function(data) {
-      if (data) {
-        var result = data.result || data.output || data.message || JSON.stringify(data);
-        output.innerHTML += '<div class="term-line">' + escapeHtml(String(result)) + '</div>';
-      } else {
-        output.innerHTML += '<div class="term-line term-error">Command failed or no response</div>';
-      }
-      output.scrollTop = output.scrollHeight;
-    });
+    setTimeout(function() { input.focus(); }, 100);
   }
-  output.scrollTop = output.scrollHeight;
 }
 
 /* Part 8: APP - File Manager */
 
 function initFiles(windowBody) {
   windowBody.innerHTML = '';
-  windowBody.classList.add('app-files');
+  windowBody.style.cssText = 'display:flex;flex-direction:column;height:100%;overflow:hidden';
 
-  var toolbar = el('div', 'files-toolbar');
+  var currentPath = state.filePath || 'C:\\';
+  var navHistory = [currentPath];
+  var hPos = 0;
 
-  var backBtn = el('button', 'files-btn');
-  backBtn.innerHTML = ICONS.back;
-  backBtn.title = 'Go up';
-  backBtn.addEventListener('click', function() {
-    var parts = state.filePath.replace(/\\$/, '').split('\\');
-    if (parts.length > 1) {
-      parts.pop();
-      state.filePath = parts.join('\\') + '\\';
-    } else {
-      state.filePath = 'C:\\';
-    }
-    fetchFiles(windowBody);
-  });
-  toolbar.appendChild(backBtn);
+  var formatSize = function(bytes) {
+    if (!bytes || isNaN(bytes)) return '\u2014';
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024*1024) return (bytes/1024).toFixed(1) + ' KB';
+    return (bytes/1024/1024).toFixed(1) + ' MB';
+  };
 
-  var breadcrumb = el('div', 'files-breadcrumb');
-  breadcrumb.id = 'files-breadcrumb';
-  toolbar.appendChild(breadcrumb);
+  var fileIcon = function(item) {
+    var isDir = item.type === 'directory' || item.type === 'folder';
+    if (isDir) return '\ud83d\udcc1';
+    var ext = (item.name||'').split('.').pop().toLowerCase();
+    var icons = {psd:'\ud83c\udfa8',pdf:'\ud83d\udcc4',xlsx:'\ud83d\udcca',docx:'\ud83d\udcdd',txt:'\ud83d\udcdd',mp4:'\ud83c\udfac',mp3:'\ud83c\udfb5',jpg:'\ud83d\uddbc\ufe0f',jpeg:'\ud83d\uddbc\ufe0f',png:'\ud83d\uddbc\ufe0f',gif:'\ud83d\uddbc\ufe0f',zip:'\ud83d\udce6',rar:'\ud83d\udce6',exe:'\u2699\ufe0f',bat:'\u2699\ufe0f',js:'\ud83d\udcdc',py:'\ud83d\udcdc',html:'\ud83c\udf10'};
+    return icons[ext] || '\ud83d\udcc4';
+  };
 
-  var refreshBtn = el('button', 'files-btn');
-  refreshBtn.innerHTML = ICONS.refresh;
-  refreshBtn.addEventListener('click', function() { fetchFiles(windowBody); });
-  toolbar.appendChild(refreshBtn);
+  windowBody.innerHTML =
+    '<div class="files-path-bar">' +
+      '<button class="files-nav-btn" id="files-nav-back" title="Voltar" disabled>\u2190</button>' +
+      '<button class="files-nav-btn" id="files-nav-fwd" title="Avancar" disabled>\u2192</button>' +
+      '<input class="files-path-input" id="files-path-input" value="' + escapeHtml(currentPath) + '" spellcheck="false"/>' +
+      '<button class="files-nav-btn" id="files-refresh" title="Atualizar">\u21bb</button>' +
+    '</div>' +
+    '<div class="wb-scroll" id="files-list"></div>';
 
-  var viewToggle = el('button', 'files-btn');
-  viewToggle.innerHTML = ICONS.list;
-  viewToggle.setAttribute('data-view', 'grid');
-  viewToggle.addEventListener('click', function() {
-    var container = windowBody.querySelector('.files-container');
-    if (!container) return;
-    var currentView = viewToggle.getAttribute('data-view');
-    if (currentView === 'grid') {
-      container.classList.remove('files-grid');
-      container.classList.add('files-list');
-      viewToggle.setAttribute('data-view', 'list');
-      viewToggle.innerHTML = ICONS.grid;
-    } else {
-      container.classList.remove('files-list');
-      container.classList.add('files-grid');
-      viewToggle.setAttribute('data-view', 'grid');
-      viewToggle.innerHTML = ICONS.list;
-    }
-  });
-  toolbar.appendChild(viewToggle);
+  var backBtn = document.getElementById('files-nav-back');
+  var fwdBtn = document.getElementById('files-nav-fwd');
+  var pathInput = document.getElementById('files-path-input');
+  var refreshBtn = document.getElementById('files-refresh');
 
-  windowBody.appendChild(toolbar);
+  var renderPath = function(path) {
+    var list = document.getElementById('files-list');
+    if (list) list.innerHTML = '<div style="padding:24px;text-align:center;color:rgba(255,255,255,0.25);font-size:12px">Carregando...</div>';
+    state.filePath = path;
+    if (pathInput) pathInput.value = path;
+    if (backBtn) backBtn.disabled = hPos <= 0;
+    if (fwdBtn) fwdBtn.disabled = hPos >= navHistory.length - 1;
 
-  var container = el('div', 'files-container files-grid');
-  windowBody.appendChild(container);
-
-  fetchFiles(windowBody);
-}
-
-function fetchFiles(windowBody) {
-  var container = windowBody.querySelector('.files-container');
-  var breadcrumb = windowBody.querySelector('#files-breadcrumb');
-  if (!container) return;
-
-  container.innerHTML = '<div class="files-loading">Loading...</div>';
-
-  if (breadcrumb) {
-    breadcrumb.innerHTML = '';
-    var parts = state.filePath.split('\\').filter(function(p) { return p !== ''; });
-    var accumulated = '';
-    parts.forEach(function(part, idx) {
-      accumulated += part + '\\';
-      var bc = el('span', 'breadcrumb-part');
-      bc.textContent = part;
-      var pathForClick = accumulated;
-      bc.addEventListener('click', function() {
-        state.filePath = pathForClick;
-        fetchFiles(windowBody);
-      });
-      breadcrumb.appendChild(bc);
-      if (idx < parts.length - 1) {
-        var sep = el('span', 'breadcrumb-sep');
-        sep.textContent = ' > ';
-        breadcrumb.appendChild(sep);
+    apiGet('/api/files?path=' + encodeURIComponent(path)).then(function(data) {
+      if (!list) return;
+      if (!data || (!data.files && !data.items)) {
+        list.innerHTML = '<div style="padding:32px;text-align:center;color:rgba(255,255,255,0.2);font-size:12px">Pasta vazia ou inacessivel</div>';
+        return;
       }
-    });
-  }
+      var items = data.files || data.items || [];
+      if (!items.length) {
+        list.innerHTML = '<div style="padding:32px;text-align:center;color:rgba(255,255,255,0.2);font-size:12px">Pasta vazia</div>';
+        return;
+      }
+      var dirs = items.filter(function(f) { return f.type === 'directory' || f.type === 'folder'; });
+      var files = items.filter(function(f) { return f.type !== 'directory' && f.type !== 'folder'; });
+      var sorted = dirs.concat(files);
 
-  apiGet('/api/files?path=' + encodeURIComponent(state.filePath)).then(function(data) {
-    container.innerHTML = '';
-    if (!data || !data.files || data.files.length === 0) {
-      container.innerHTML = '<div class="files-empty">No files found or path inaccessible</div>';
-      return;
-    }
+      list.innerHTML = sorted.map(function(item) {
+        var isDir = item.type === 'directory' || item.type === 'folder';
+        var itemPath = (path.replace(/\\$/, '') + '\\' + item.name).replace(/\\/g, '/');
+        return '<div class="file-row-v2" data-path="' + escapeHtml(path + item.name + '\\') + '" data-isdir="' + isDir + '">' +
+          '<span class="file-icon-v2">' + fileIcon(item) + '</span>' +
+          '<span class="file-name-v2">' + escapeHtml(item.name) + '</span>' +
+          '<span class="file-type-v2">' + (isDir ? 'Pasta' : (item.name.split('.').pop()||'').toUpperCase()) + '</span>' +
+          '<span class="file-size-v2">' + (isDir ? '' : formatSize(item.size)) + '</span>' +
+        '</div>';
+      }).join('');
 
-    var dirs = data.files.filter(function(f) { return f.type === 'directory' || f.type === 'folder'; });
-    var files = data.files.filter(function(f) { return f.type !== 'directory' && f.type !== 'folder'; });
-
-    dirs.concat(files).forEach(function(file) {
-      var item = el('div', 'file-item');
-      var isDir = file.type === 'directory' || file.type === 'folder';
-      var icon = isDir ? ICONS.folder : ICONS.file;
-      item.innerHTML = '<div class="file-icon">' + icon + '</div>' +
-        '<div class="file-name">' + escapeHtml(file.name) + '</div>' +
-        '<div class="file-meta">' + (isDir ? 'Folder' : formatBytes(file.size)) + '</div>';
-      item.setAttribute('data-filename', file.name);
-      item.setAttribute('data-type', file.type || '');
-
-      if (isDir) {
-        item.addEventListener('dblclick', function() {
-          state.filePath = state.filePath + file.name + '\\';
-          fetchFiles(windowBody);
+      list.querySelectorAll('.file-row-v2').forEach(function(row) {
+        row.addEventListener('click', function() {
+          if (row.getAttribute('data-isdir') === 'true') {
+            var newPath = row.getAttribute('data-path');
+            currentPath = newPath;
+            navHistory = navHistory.slice(0, hPos + 1);
+            navHistory.push(newPath);
+            hPos = navHistory.length - 1;
+            renderPath(newPath);
+          }
         });
-      }
-
-      container.appendChild(item);
+      });
     });
+  };
+
+  if (backBtn) backBtn.addEventListener('click', function() {
+    if (hPos > 0) { hPos--; currentPath = navHistory[hPos]; renderPath(currentPath); }
   });
+  if (fwdBtn) fwdBtn.addEventListener('click', function() {
+    if (hPos < navHistory.length - 1) { hPos++; currentPath = navHistory[hPos]; renderPath(currentPath); }
+  });
+  if (refreshBtn) refreshBtn.addEventListener('click', function() {
+    renderPath(pathInput ? pathInput.value : currentPath);
+  });
+  if (pathInput) pathInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+      currentPath = pathInput.value;
+      navHistory.push(currentPath);
+      hPos = navHistory.length - 1;
+      renderPath(currentPath);
+    }
+  });
+
+  renderPath(currentPath);
 }
 
 /* Part 9: APP - Messages */
 
 function initMessages(windowBody) {
   windowBody.innerHTML = '';
-  windowBody.classList.add('app-messages');
+  windowBody.style.cssText = 'display:flex;flex-direction:column;height:100%;overflow:hidden';
 
-  var tabs = el('div', 'msg-tabs');
-  var tabMac = el('button', 'msg-tab msg-tab-active');
-  tabMac.textContent = 'Windows -> Mac';
-  tabMac.setAttribute('data-tab', 'mac');
-  var tabWin = el('button', 'msg-tab');
-  tabWin.textContent = 'Mac -> Windows';
-  tabWin.setAttribute('data-tab', 'win');
+  var activeTab = 0; // 0 = Win->Mac, 1 = Mac->Win
 
-  tabMac.addEventListener('click', function() {
-    state.msgTab = 'mac';
-    tabMac.classList.add('msg-tab-active');
-    tabWin.classList.remove('msg-tab-active');
-    fetchMessages(windowBody);
-  });
-  tabWin.addEventListener('click', function() {
-    state.msgTab = 'win';
-    tabWin.classList.add('msg-tab-active');
-    tabMac.classList.remove('msg-tab-active');
-    fetchMessages(windowBody);
-  });
+  windowBody.innerHTML =
+    '<div class="msgs-tabs">' +
+      '<div class="msgs-tab active" id="msgs-tab-0">\ud83d\udda5\ufe0f Windows \u2192 Mac</div>' +
+      '<div class="msgs-tab" id="msgs-tab-1">\ud83c\udf4e Mac \u2192 Windows</div>' +
+    '</div>' +
+    '<div class="msgs-list" id="msgs-list">' +
+      '<div class="msgs-empty">Carregando mensagens...</div>' +
+    '</div>' +
+    '<div class="msgs-send-row">' +
+      '<input class="msgs-input" id="msgs-input" placeholder="Enviar mensagem para o Windows..." autocomplete="off"/>' +
+      '<button class="msgs-send-btn" id="msgs-send-btn">Enviar \u2197</button>' +
+    '</div>';
 
-  tabs.appendChild(tabMac);
-  tabs.appendChild(tabWin);
-  windowBody.appendChild(tabs);
+  var tab0 = document.getElementById('msgs-tab-0');
+  var tab1 = document.getElementById('msgs-tab-1');
+  var sendBtn = document.getElementById('msgs-send-btn');
+  var msgInput = document.getElementById('msgs-input');
 
-  var msgList = el('div', 'msg-list');
-  msgList.id = 'msg-list';
-  windowBody.appendChild(msgList);
+  var switchTab = function(tab) {
+    activeTab = tab;
+    state.msgTab = tab === 0 ? 'mac' : 'win';
+    if (tab0) tab0.className = 'msgs-tab' + (tab === 0 ? ' active' : '');
+    if (tab1) tab1.className = 'msgs-tab' + (tab === 1 ? ' active' : '');
+    loadMessages();
+  };
 
-  var sendRow = el('div', 'msg-send-row');
-  var msgInput = el('input', 'msg-input');
-  msgInput.type = 'text';
-  msgInput.placeholder = 'Type a message...';
-  msgInput.id = 'msg-input';
-  var sendBtn = el('button', 'msg-send-btn');
-  sendBtn.innerHTML = ICONS.send;
-  sendBtn.addEventListener('click', function() { sendMessage(windowBody); });
-  msgInput.addEventListener('keydown', function(e) {
-    if (e.key === 'Enter') sendMessage(windowBody);
-  });
-  sendRow.appendChild(msgInput);
-  sendRow.appendChild(sendBtn);
-  windowBody.appendChild(sendRow);
+  if (tab0) tab0.addEventListener('click', function() { switchTab(0); });
+  if (tab1) tab1.addEventListener('click', function() { switchTab(1); });
 
-  fetchMessages(windowBody);
-
-  var msgInterval = setInterval(function() {
-    if (!state.windows.messages) { clearInterval(msgInterval); return; }
-    fetchMessages(windowBody);
-  }, 8000);
-}
-
-function fetchMessages(windowBody) {
-  var msgList = windowBody.querySelector('#msg-list');
-  if (!msgList) return;
-
-  var url = state.msgTab === 'mac' ? '/messages-mac' : '/messages';
-  apiGet(url).then(function(data) {
-    if (!data) {
-      msgList.innerHTML = '<div class="msg-empty">Could not fetch messages</div>';
-      return;
-    }
-    var msgs = Array.isArray(data) ? data : (data.messages || []);
-    if (msgs.length === 0) {
-      msgList.innerHTML = '<div class="msg-empty">No messages yet</div>';
-      return;
-    }
-    msgList.innerHTML = '';
-    msgs.forEach(function(m) {
-      var item = el('div', 'msg-item');
-      var content = m.content || m.message || m.text || JSON.stringify(m);
-      var time = m.timestamp || m.time || '';
-      item.innerHTML = '<div class="msg-content">' + escapeHtml(String(content)) + '</div>' +
-        '<div class="msg-time">' + escapeHtml(String(time)) + '</div>';
-      msgList.appendChild(item);
+  var loadMessages = function() {
+    var list = document.getElementById('msgs-list');
+    if (!list) return;
+    var url = activeTab === 0 ? '/messages-mac' : '/messages';
+    apiGet(url).then(function(data) {
+      if (!list || !document.getElementById('msgs-list')) return;
+      if (!data) {
+        list.innerHTML = '<div class="msgs-empty" style="color:rgba(239,68,68,0.5)">Bridge offline</div>';
+        return;
+      }
+      var msgs = Array.isArray(data) ? data : (data.messages || []);
+      msgs = msgs.slice(-30);
+      if (!msgs.length) {
+        list.innerHTML = '<div class="msgs-empty">Sem mensagens neste canal</div>';
+        return;
+      }
+      list.innerHTML = msgs.map(function(m) {
+        var content = m.content || m.message || m.text || JSON.stringify(m);
+        var time = m.timestamp || m.time || '';
+        var timeStr = time ? new Date(time).toLocaleTimeString('pt-BR') : '';
+        return '<div class="msg-bubble">' +
+          '<div class="msg-bubble-time">' + escapeHtml(timeStr) + '</div>' +
+          '<div class="msg-bubble-text">' + escapeHtml(String(content)) + '</div>' +
+        '</div>';
+      }).join('');
+      list.scrollTop = list.scrollHeight;
     });
-    msgList.scrollTop = msgList.scrollHeight;
-  });
-}
+  };
 
-function sendMessage(windowBody) {
-  var input = windowBody.querySelector('#msg-input');
-  if (!input || !input.value.trim()) return;
-  var msg = input.value.trim();
-  input.value = '';
-
-  if (state.msgTab === 'win' || state.msgTab === 'mac') {
-    apiPost('/send-to-windows', { message: msg }).then(function(data) {
-      showToast('Message sent', '#10b981');
-      fetchMessages(windowBody);
+  var doSend = function() {
+    if (!msgInput || !msgInput.value.trim()) return;
+    var text = msgInput.value.trim();
+    msgInput.value = '';
+    apiPost('/send-to-windows', { message: text }).then(function() {
+      showToast('Mensagem enviada', '#10b981');
+      loadMessages();
     });
-  }
+  };
+
+  if (sendBtn) sendBtn.addEventListener('click', doSend);
+  if (msgInput) msgInput.addEventListener('keydown', function(e) { if (e.key === 'Enter') doSend(); });
+
+  loadMessages();
+
+  var poll = function() {
+    if (!document.getElementById('msgs-list')) return;
+    loadMessages();
+    setTimeout(poll, 5000);
+  };
+  setTimeout(poll, 5000);
 }
 
 /* Part 10: APP - AI Assistant */
@@ -3975,175 +4342,194 @@ function initPhotoshop(windowBody) {
 
 function initSettings(windowBody) {
   windowBody.innerHTML = '';
-  windowBody.classList.add('app-settings');
+  windowBody.style.cssText = 'height:100%;overflow:hidden';
 
-  var sidebar = el('div', 'settings-sidebar');
-  var content = el('div', 'settings-content');
-  content.id = 'settings-content';
+  windowBody.innerHTML =
+    '<div class="settings-layout">' +
+      '<div class="settings-nav" id="settings-nav">' +
+        '<div class="settings-nav-item active" data-tab="connection">\ud83d\udd0c Conexao</div>' +
+        '<div class="settings-nav-item" data-tab="intervals">\u23f1 Intervalos</div>' +
+        '<div class="settings-nav-item" data-tab="photoshop">\ud83c\udfa8 Photoshop</div>' +
+        '<div class="settings-nav-item" data-tab="api">\ud83d\udccb API Docs</div>' +
+        '<div class="settings-nav-item" data-tab="danger" style="color:rgba(239,68,68,0.6)">\u26a0\ufe0f Danger</div>' +
+      '</div>' +
+      '<div class="settings-content-v2" id="settings-content-v2"></div>' +
+    '</div>';
 
-  var tabs = [
-    { id: 'connection', label: 'Connection' },
-    { id: 'intervals', label: 'Intervals' },
-    { id: 'photoshop', label: 'Photoshop' },
-    { id: 'api', label: 'API Docs' },
-    { id: 'danger', label: 'Danger Zone' }
-  ];
+  var nav = document.getElementById('settings-nav');
+  var content = document.getElementById('settings-content-v2');
 
-  tabs.forEach(function(tab) {
-    var item = el('div', 'settings-tab-item' + (state.settingsTab === tab.id ? ' settings-tab-active' : ''));
-    item.textContent = tab.label;
-    item.setAttribute('data-tab', tab.id);
-    item.addEventListener('click', function() {
-      state.settingsTab = tab.id;
-      sidebar.querySelectorAll('.settings-tab-item').forEach(function(t) { t.classList.remove('settings-tab-active'); });
-      item.classList.add('settings-tab-active');
-      renderSettingsPanel(content);
+  if (nav) {
+    nav.querySelectorAll('.settings-nav-item').forEach(function(item) {
+      item.addEventListener('click', function() {
+        nav.querySelectorAll('.settings-nav-item').forEach(function(x) { x.classList.remove('active'); });
+        item.classList.add('active');
+        state.settingsTab = item.getAttribute('data-tab');
+        renderSettingsV2(content);
+      });
     });
-    sidebar.appendChild(item);
-  });
+  }
 
-  windowBody.appendChild(sidebar);
-  windowBody.appendChild(content);
-  renderSettingsPanel(content);
+  renderSettingsV2(content);
 }
 
-function renderSettingsPanel(content) {
-  content.innerHTML = '';
+function renderSettingsV2(content) {
+  if (!content) return;
 
   if (state.settingsTab === 'connection') {
     content.innerHTML =
-      '<h3>Connection Settings</h3>' +
-      '<div class="settings-field"><label>Bridge Status</label><div id="settings-bridge-status">Checking...</div></div>' +
-      '<div class="settings-field"><label>Tunnel URL</label><div id="settings-tunnel">' + escapeHtml(state.tunnelUrl || 'Not connected') + '</div></div>' +
-      '<div class="settings-field"><label>Last Seen</label><div>' + escapeHtml(state.lastSeen || 'N/A') + '</div></div>' +
-      '<div class="settings-field"><button class="settings-btn" id="settings-refresh-btn">' + ICONS.refresh + ' Refresh Status</button></div>';
+      '<div class="settings-row">' +
+        '<div class="settings-row-label">Status da Bridge</div>' +
+        '<div class="settings-row-value" id="bridge-status-val">Verificando...</div>' +
+      '</div>' +
+      '<div class="settings-row">' +
+        '<div class="settings-row-label">Tunnel URL</div>' +
+        '<div class="settings-row-value" id="tunnel-url-val" style="font-size:12px;font-family:monospace;word-break:break-all">\u2014</div>' +
+      '</div>' +
+      '<div class="settings-row">' +
+        '<div class="settings-row-label">Ultimo contato</div>' +
+        '<div class="settings-row-value" id="last-seen-val">\u2014</div>' +
+      '</div>' +
+      '<button class="settings-refresh-btn" id="settings-check-btn">\u21bb Verificar status</button>';
+
     setTimeout(function() {
-      var btn = document.getElementById('settings-refresh-btn');
-      if (btn) btn.addEventListener('click', function() { refreshAll(); showToast('Status refreshed', '#3b82f6'); });
-    }, 10);
-    apiGet('/status').then(function(data) {
-      var el2 = document.getElementById('settings-bridge-status');
-      if (el2) el2.innerHTML = data && data.ok ? '<span style="color:#10b981">Online</span>' : '<span style="color:#ef4444">Offline</span>';
-    });
+      var btn = document.getElementById('settings-check-btn');
+      if (btn) btn.addEventListener('click', checkBridgeStatusV2);
+      checkBridgeStatusV2();
+    }, 50);
+
   } else if (state.settingsTab === 'intervals') {
     content.innerHTML =
-      '<h3>Refresh Intervals</h3>' +
-      '<div class="settings-field"><label>Full refresh: 30 seconds</label></div>' +
-      '<div class="settings-field"><label>Fast refresh (messages): 8 seconds</label></div>' +
-      '<div class="settings-field"><label>Clock update: 1 second</label></div>' +
-      '<div class="settings-field"><label>Monitor refresh: 10 seconds</label></div>' +
-      '<p class="settings-note">Intervals are fixed in this version.</p>';
+      '<div class="settings-row"><div class="settings-row-label">Polling de mensagens</div><div class="settings-row-value">5 segundos</div></div>' +
+      '<div class="settings-row"><div class="settings-row-label">Polling de status</div><div class="settings-row-value">10 segundos</div></div>' +
+      '<div class="settings-row"><div class="settings-row-label">Refresh completo</div><div class="settings-row-value">30 segundos</div></div>' +
+      '<div class="settings-row"><div class="settings-row-label">Clock update</div><div class="settings-row-value">1 segundo</div></div>';
+
   } else if (state.settingsTab === 'photoshop') {
-    var psdPath = 'C:\\Users\\Victor\\Documents\\lilika\\Arte_Feed.psd';
     content.innerHTML =
-      '<h3>Photoshop Settings</h3>' +
-      '<div class="settings-field"><label>PSD File Path</label><div class="settings-mono">' + escapeHtml(psdPath) + '</div></div>' +
-      '<div class="settings-field"><label>Server IP</label><div class="settings-mono">192.168.48.133:4000</div></div>' +
-      '<div class="settings-field"><label>Deploy Token</label><div class="settings-mono">x-deploy-token: tilika-secret-2025</div></div>';
+      '<div class="settings-row"><div class="settings-row-label">PSD File Path</div><div class="settings-row-value" style="font-size:12px;font-family:monospace">C:\\Users\\Victor\\Documents\\lilika\\Arte_Feed.psd</div></div>' +
+      '<div class="settings-row"><div class="settings-row-label">Server IP</div><div class="settings-row-value" style="font-family:monospace">192.168.48.133:4000</div></div>' +
+      '<div class="settings-row"><div class="settings-row-label">Deploy Token</div><div class="settings-row-value" style="font-family:monospace">x-deploy-token: tilika-secret-2025</div></div>';
+
   } else if (state.settingsTab === 'api') {
-    var endpoints = [
-      { method: 'GET', path: '/status', desc: 'Bridge status and tunnel info' },
-      { method: 'GET', path: '/health', desc: 'Health check' },
-      { method: 'POST', path: '/register', desc: 'Register tunnel URL' },
-      { method: 'POST', path: '/api/command', desc: 'Send command to Windows' },
-      { method: 'GET', path: '/api/command/history', desc: 'Command history' },
-      { method: 'GET', path: '/api/files?path=...', desc: 'List files at path' },
-      { method: 'POST', path: '/api/task/create', desc: 'Create a task' },
-      { method: 'GET', path: '/api/clients', desc: 'List CRM clients' },
-      { method: 'POST', path: '/api/clients', desc: 'Create/update client' },
-      { method: 'DELETE', path: '/api/clients/:id', desc: 'Delete client' },
-      { method: 'GET', path: '/api/stats', desc: 'System statistics' },
-      { method: 'GET', path: '/api/logs', desc: 'System logs' },
-      { method: 'POST', path: '/api/ping', desc: 'Ping Windows server' },
-      { method: 'POST', path: '/api/ai/execute', desc: 'Execute AI command' },
-      { method: 'GET', path: '/api/notifications', desc: 'Get notifications' },
-      { method: 'POST', path: '/api/notifications/read', desc: 'Mark notifications read' },
-      { method: 'GET', path: '/messages-mac', desc: 'Windows to Mac messages' },
-      { method: 'GET', path: '/messages', desc: 'Mac to Windows messages' },
-      { method: 'POST', path: '/send-to-windows', desc: 'Send message to Windows' }
+    var routes = [
+      ['GET',  '/status',           'Status geral do sistema'],
+      ['GET',  '/health',           'Health check'],
+      ['POST', '/register',         'Registrar tunnel URL'],
+      ['POST', '/api/command',      'Enviar comando pro Windows'],
+      ['GET',  '/api/files?path=...','Listar arquivos'],
+      ['GET',  '/api/clients',      'Listar clientes'],
+      ['POST', '/api/clients',      'Criar/atualizar cliente'],
+      ['DELETE','/api/clients/:id', 'Deletar cliente'],
+      ['GET',  '/api/stats',        'Estatisticas do sistema'],
+      ['GET',  '/api/logs',         'Logs do sistema'],
+      ['POST', '/api/ping',         'Ping Windows'],
+      ['POST', '/api/ai/chat',      'Chat com IA'],
+      ['GET',  '/api/notifications','Notificacoes'],
+      ['GET',  '/messages-mac',     'Mensagens Windows \u2192 Mac'],
+      ['GET',  '/messages',         'Mensagens Mac \u2192 Windows'],
+      ['POST', '/send-to-windows',  'Enviar mensagem pro Windows']
     ];
-    var html = '<h3>API Documentation</h3><div class="api-list">';
-    endpoints.forEach(function(ep) {
-      var methodClass = ep.method === 'GET' ? 'api-get' : (ep.method === 'POST' ? 'api-post' : 'api-delete');
-      html += '<div class="api-item"><span class="api-method ' + methodClass + '">' + ep.method + '</span>' +
-        '<span class="api-path">' + escapeHtml(ep.path) + '</span>' +
-        '<span class="api-desc">' + escapeHtml(ep.desc) + '</span></div>';
-    });
-    html += '</div>';
-    content.innerHTML = html;
+    content.innerHTML =
+      '<table class="wb-table">' +
+        '<thead><tr><th>Metodo</th><th>Rota</th><th>Descricao</th></tr></thead>' +
+        '<tbody>' +
+          routes.map(function(r) {
+            var badgeClass = r[0] === 'GET' ? 'green' : (r[0] === 'POST' ? 'blue' : 'red');
+            return '<tr>' +
+              '<td><span class="wb-badge ' + badgeClass + '">' + r[0] + '</span></td>' +
+              '<td style="font-family:monospace;font-size:11px;color:rgba(255,255,255,0.7)">' + escapeHtml(r[1]) + '</td>' +
+              '<td style="color:rgba(255,255,255,0.45);font-size:12px">' + r[2] + '</td>' +
+            '</tr>';
+          }).join('') +
+        '</tbody>' +
+      '</table>';
+
   } else if (state.settingsTab === 'danger') {
     content.innerHTML =
-      '<h3 style="color:#ef4444">Danger Zone</h3>' +
-      '<p class="settings-note">These actions can disrupt the system. Use with caution.</p>' +
-      '<div class="danger-actions" id="danger-actions"></div>';
+      '<div class="settings-row" style="border-color:rgba(239,68,68,0.2)">' +
+        '<div class="settings-row-label" style="color:rgba(239,68,68,0.6)">Zona de Perigo</div>' +
+        '<div class="settings-row-value" style="font-size:12px;color:rgba(255,255,255,0.4)">Acoes irreversiveis abaixo.</div>' +
+      '</div>' +
+      '<button class="wb-toolbar-btn" id="danger-clear-msgs" style="background:rgba(239,68,68,0.1);border-color:rgba(239,68,68,0.3);color:#ef4444">\ud83d\uddd1\ufe0f Limpar todas as mensagens</button>' +
+      '<button class="wb-toolbar-btn" id="danger-restart" style="background:rgba(239,68,68,0.1);border-color:rgba(239,68,68,0.3);color:#ef4444">\u26a0\ufe0f Restart Windows Server</button>' +
+      '<button class="wb-toolbar-btn" id="danger-reset-tunnel" style="background:rgba(239,68,68,0.1);border-color:rgba(239,68,68,0.3);color:#ef4444">\ud83d\udd04 Reset Tunnel</button>';
+
     setTimeout(function() {
-      var dangerEl = document.getElementById('danger-actions');
-      if (!dangerEl) return;
-
-      var actions = [
-        { label: 'Restart Windows Server', cmd: 'restart-server', warn: 'This will restart the Windows bridge server.' },
-        { label: 'Clear Command History', cmd: 'clear-history', warn: 'This will erase all command history.' },
-        { label: 'Reset Tunnel', cmd: 'reset-tunnel', warn: 'This will reset the Cloudflare tunnel connection.' },
-        { label: 'Logout All Sessions', cmd: 'logout-all', warn: 'This will log out from all sessions.' }
-      ];
-
-      actions.forEach(function(action) {
-        var btn = document.createElement('button');
-        btn.className = 'danger-btn';
-        btn.textContent = action.label;
-        btn.addEventListener('click', function() {
-          if (confirm('Are you sure? ' + action.warn)) {
-            apiPost('/api/command', { command: action.cmd, type: 'system' }).then(function(data) {
-              showToast('Command sent: ' + action.label, '#f59e0b');
-            });
-          }
-        });
-        dangerEl.appendChild(btn);
+      var clearBtn = document.getElementById('danger-clear-msgs');
+      var restartBtn = document.getElementById('danger-restart');
+      var resetBtn = document.getElementById('danger-reset-tunnel');
+      if (clearBtn) clearBtn.addEventListener('click', function() {
+        if (confirm('Limpar todas as mensagens?')) apiPost('/api/command', { command: 'clear-history', type: 'system' }).then(function() { showToast('Mensagens limpas', '#f59e0b'); });
       });
-    }, 10);
+      if (restartBtn) restartBtn.addEventListener('click', function() {
+        if (confirm('Reiniciar o servidor Windows?')) apiPost('/api/command', { command: 'restart-server', type: 'system' }).then(function() { showToast('Comando enviado', '#f59e0b'); });
+      });
+      if (resetBtn) resetBtn.addEventListener('click', function() {
+        if (confirm('Resetar tunnel?')) apiPost('/api/command', { command: 'reset-tunnel', type: 'system' }).then(function() { showToast('Tunnel resetado', '#f59e0b'); });
+      });
+    }, 50);
   }
+}
+
+function checkBridgeStatusV2() {
+  var statusEl = document.getElementById('bridge-status-val');
+  var tunnelEl = document.getElementById('tunnel-url-val');
+  var seenEl = document.getElementById('last-seen-val');
+  if (statusEl) statusEl.textContent = 'Verificando...';
+  apiGet('/status').then(function(data) {
+    if (!data) {
+      if (statusEl) { statusEl.textContent = 'Offline'; statusEl.className = 'settings-row-value offline'; }
+      return;
+    }
+    var online = data.ok || false;
+    if (statusEl) {
+      statusEl.textContent = online ? 'Online \u2713' : 'Offline';
+      statusEl.className = 'settings-row-value ' + (online ? 'online' : 'offline');
+    }
+    if (tunnelEl) tunnelEl.textContent = data.tunnel || 'Nao conectado';
+    if (seenEl) seenEl.textContent = data.lastSeen ? new Date(data.lastSeen).toLocaleString('pt-BR') : 'N/A';
+  });
 }
 
 /* Part 14: APP - Clients (CRM) */
 
 function initClients(windowBody) {
   windowBody.innerHTML = '';
-  windowBody.classList.add('app-clients');
+  windowBody.style.cssText = 'display:flex;flex-direction:column;height:100%;overflow:hidden';
 
-  var toolbar = el('div', 'clients-toolbar');
-  var title = el('span', 'clients-title');
-  title.textContent = 'Client Management';
-  toolbar.appendChild(title);
+  windowBody.innerHTML =
+    '<div class="wb-toolbar">' +
+      '<span style="font-size:13px;font-weight:600;flex:1">Clientes</span>' +
+      '<button class="wb-toolbar-btn primary" id="clients-add-btn">+ Adicionar</button>' +
+      '<button class="wb-toolbar-btn" id="clients-refresh-btn" title="Atualizar">\u21bb</button>' +
+    '</div>' +
+    '<div class="wb-scroll">' +
+      '<table class="wb-table">' +
+        '<thead><tr>' +
+          '<th style="width:40%">Nome</th>' +
+          '<th style="width:20%">Status</th>' +
+          '<th style="width:25%">Tipo</th>' +
+          '<th style="width:15%;text-align:right">Acoes</th>' +
+        '</tr></thead>' +
+        '<tbody id="clients-tbody"><tr><td colspan="4" style="text-align:center;padding:32px;color:rgba(255,255,255,0.25);font-size:12px">Carregando...</td></tr></tbody>' +
+      '</table>' +
+    '</div>';
 
-  var addBtn = el('button', 'clients-add-btn');
-  addBtn.innerHTML = ICONS.plus + ' Add Client';
-  addBtn.addEventListener('click', function() {
-    showClientModal(windowBody, null);
-  });
-  toolbar.appendChild(addBtn);
+  var addBtn = document.getElementById('clients-add-btn');
+  var refreshBtn = document.getElementById('clients-refresh-btn');
 
-  var refreshBtn = el('button', 'clients-refresh-btn');
-  refreshBtn.innerHTML = ICONS.refresh;
-  refreshBtn.addEventListener('click', function() { fetchClients(windowBody); });
-  toolbar.appendChild(refreshBtn);
-
-  windowBody.appendChild(toolbar);
-
-  var table = el('div', 'clients-table');
-  table.id = 'clients-table';
-  windowBody.appendChild(table);
+  if (addBtn) addBtn.addEventListener('click', function() { showClientModal(windowBody, null); });
+  if (refreshBtn) refreshBtn.addEventListener('click', function() { fetchClients(windowBody); });
 
   fetchClients(windowBody);
 }
 
 function fetchClients(windowBody) {
-  var table = windowBody.querySelector('#clients-table');
-  if (!table) return;
-  table.innerHTML = '<div class="clients-loading">Loading...</div>';
-
   apiGet('/api/clients').then(function(data) {
     if (!data || !data.clients) {
-      table.innerHTML = '<div class="clients-empty">No clients found or API unavailable</div>';
+      var tbody = document.getElementById('clients-tbody');
+      if (tbody) tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:32px;color:rgba(255,255,255,0.25);font-size:12px">Nenhum cliente encontrado</td></tr>';
       return;
     }
     state.clients = data.clients;
@@ -4152,66 +4538,55 @@ function fetchClients(windowBody) {
 }
 
 function renderClientsTable(windowBody) {
-  var table = windowBody.querySelector('#clients-table');
-  if (!table) return;
-  table.innerHTML = '';
+  var tbody = document.getElementById('clients-tbody');
+  if (!tbody) return;
 
-  if (state.clients.length === 0) {
-    table.innerHTML = '<div class="clients-empty">No clients yet. Click "Add Client" to create one.</div>';
+  if (!state.clients || state.clients.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:32px;color:rgba(255,255,255,0.25);font-size:12px">Nenhum cliente cadastrado</td></tr>';
     return;
   }
 
-  var header = el('div', 'clients-row clients-header');
-  header.innerHTML = '<span class="cl-name">Name</span><span class="cl-status">Status</span><span class="cl-type">Type</span><span class="cl-actions">Actions</span>';
-  table.appendChild(header);
+  var statusBadge = {
+    'active':      '<span class="wb-badge green">Ativo</span>',
+    'in-progress': '<span class="wb-badge blue">Em andamento</span>',
+    'inactive':    '<span class="wb-badge gray">Inativo</span>',
+    'prospect':    '<span class="wb-badge yellow">Proposta</span>',
+    'lead':        '<span class="wb-badge purple">Lead</span>'
+  };
 
-  state.clients.forEach(function(client) {
-    var row = el('div', 'clients-row');
-    var statusClass = 'cl-badge ';
-    var st = (client.status || '').toLowerCase();
-    if (st === 'active') statusClass += 'cl-badge-active';
-    else if (st === 'inactive') statusClass += 'cl-badge-inactive';
-    else if (st === 'lead') statusClass += 'cl-badge-lead';
-    else statusClass += 'cl-badge-default';
+  tbody.innerHTML = state.clients.map(function(c) {
+    var initial = (c.name || '?')[0].toUpperCase();
+    var badge = statusBadge[(c.status||'').toLowerCase()] || '<span class="wb-badge gray">' + escapeHtml(c.status||'\u2014') + '</span>';
+    return '<tr>' +
+      '<td><div style="display:flex;align-items:center;gap:8px"><div class="wb-avatar">' + initial + '</div><span style="font-weight:500">' + escapeHtml(c.name||'\u2014') + '</span></div></td>' +
+      '<td>' + badge + '</td>' +
+      '<td style="color:rgba(255,255,255,0.55);font-size:12px">' + escapeHtml(c.type||'\u2014') + '</td>' +
+      '<td><div style="display:flex;gap:4px;justify-content:flex-end">' +
+        '<button class="wb-action-btn" data-action="edit" data-id="' + (c.id||'') + '">\u270f\ufe0f</button>' +
+        '<button class="wb-action-btn" data-action="delete" data-id="' + (c.id||'') + '">\ud83d\uddd1\ufe0f</button>' +
+      '</div></td>' +
+    '</tr>';
+  }).join('');
 
-    var nameSpan = el('span', 'cl-name');
-    nameSpan.textContent = client.name || 'Unnamed';
-    var statusSpan = el('span', 'cl-status');
-    var badge = el('span', statusClass);
-    badge.textContent = client.status || 'unknown';
-    statusSpan.appendChild(badge);
-    var typeSpan = el('span', 'cl-type');
-    typeSpan.textContent = client.type || '-';
-    var actionsSpan = el('span', 'cl-actions');
+  tbody.querySelectorAll('[data-action="edit"]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var clientId = btn.getAttribute('data-id');
+      var client = state.clients.find(function(c) { return c.id === clientId; });
+      if (client) showClientModal(windowBody, client);
+    });
+  });
 
-    var editBtn = el('button', 'cl-btn cl-btn-edit');
-    editBtn.innerHTML = ICONS.edit;
-    editBtn.title = 'Edit';
-    (function(c) {
-      editBtn.addEventListener('click', function() { showClientModal(windowBody, c); });
-    })(client);
-    actionsSpan.appendChild(editBtn);
-
-    var delBtn = el('button', 'cl-btn cl-btn-del');
-    delBtn.innerHTML = ICONS.trash;
-    delBtn.title = 'Delete';
-    (function(c) {
-      delBtn.addEventListener('click', function() {
-        if (confirm('Delete client "' + (c.name || '') + '"?')) {
-          apiDelete('/api/clients/' + c.id).then(function() {
-            showToast('Client deleted', '#ef4444');
-            fetchClients(windowBody);
-          });
-        }
-      });
-    })(client);
-    actionsSpan.appendChild(delBtn);
-
-    row.appendChild(nameSpan);
-    row.appendChild(statusSpan);
-    row.appendChild(typeSpan);
-    row.appendChild(actionsSpan);
-    table.appendChild(row);
+  tbody.querySelectorAll('[data-action="delete"]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var clientId = btn.getAttribute('data-id');
+      var client = state.clients.find(function(c) { return c.id === clientId; });
+      if (client && confirm('Deletar cliente "' + (client.name||'') + '"?')) {
+        apiDelete('/api/clients/' + clientId).then(function() {
+          showToast('Cliente deletado', '#ef4444');
+          fetchClients(windowBody);
+        });
+      }
+    });
   });
 }
 
