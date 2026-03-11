@@ -1,6 +1,5 @@
 node_modules/
 .env
 *.log
-agent/dist/
 agent/installer/output/
 agent/installer/icon.ico
