@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: phantom-bridge
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: REGISTER_TOKEN
+        value: phantom-secret-2025
+      - key: NODE_ENV
+        value: production
