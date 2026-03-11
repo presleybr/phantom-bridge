@@ -1239,23 +1239,54 @@ function clearTerminal() {
 /* ─── Files ─── */
 async function fetchFiles() {
   try {
-    const r=await fetch('/api/files?path='+encodeURIComponent(state.filePath)); const d=await r.json();
-    const list=document.getElementById('file-list');
-    if (!d.files||!d.files.length) { list.innerHTML='<div class="empty-state"><div class="icon">&#x1F4C2;</div><p>Empty directory</p></div>'; return; }
-    list.innerHTML=d.files.map(f=>{
-      const icon=f.type==='folder'?'&#x1F4C1;':'&#x1F4C4;';
-      return '<div class="file-item" onclick="'+(f.type==='folder'?'navigatePath(\''+escHtml(state.filePath+f.name+'\\\\\')+'\')':"showToast('File: "+escHtml(f.name)+"')")+'"><div class="file-icon">'+icon+'</div><div class="file-name">'+escHtml(f.name)+'</div><div class="file-size">'+(f.size||'--')+'</div><div class="file-date">'+formatTs(f.modified)+'</div></div>';
+    var r = await fetch('/api/files?path=' + encodeURIComponent(state.filePath));
+    var d = await r.json();
+    var list = document.getElementById('file-list');
+    if (!d.files || !d.files.length) {
+      list.innerHTML = '<div class="empty-state"><div class="icon">&#x1F4C2;</div><p>Empty directory</p></div>';
+      return;
+    }
+    list.innerHTML = d.files.map(function(f) {
+      var icon = f.type === 'folder' ? '&#x1F4C1;' : '&#x1F4C4;';
+      var newPath = state.filePath + f.name + '\\';
+      var clickAttr = f.type === 'folder'
+        ? 'data-nav="' + escHtml(newPath) + '"'
+        : 'data-file="' + escHtml(f.name) + '"';
+      return '<div class="file-item" ' + clickAttr + '><div class="file-icon">' + icon + '</div><div class="file-name">' + escHtml(f.name) + '</div><div class="file-size">' + (f.size || '--') + '</div><div class="file-date">' + formatTs(f.modified) + '</div></div>';
     }).join('');
+    list.querySelectorAll('[data-nav]').forEach(function(el) {
+      el.addEventListener('click', function() { navigatePath(el.getAttribute('data-nav')); });
+    });
+    list.querySelectorAll('[data-file]').forEach(function(el) {
+      el.addEventListener('click', function() { showToast('File: ' + el.getAttribute('data-file')); });
+    });
     updateBreadcrumb();
-  } catch(e) { document.getElementById('file-list').innerHTML='<div class="empty-state"><div class="icon">&#x26A0;&#xFE0F;</div><p>Cannot load files</p></div>'; }
+  } catch(e) {
+    document.getElementById('file-list').innerHTML = '<div class="empty-state"><div class="icon">&#x26A0;&#xFE0F;</div><p>Cannot load files</p></div>';
+  }
 }
-function navigatePath(p) { state.filePath=p; fetchFiles(); }
+function navigatePath(p) { state.filePath = p; fetchFiles(); }
 function updateBreadcrumb() {
-  const parts=state.filePath.replace(/\\\\/g,'/').split('/').filter(Boolean);
-  let html='<span onclick="navigatePath(\'C:\\\\\')">C:</span>';
-  let path='C:\\';
-  parts.forEach((p,i)=>{ if (i===0&&p==='C:') return; path+=p+'\\'; html+='<span class="sep">&#x25B8;</span><span onclick="navigatePath(\''+escHtml(path)+'\')">'+escHtml(p)+'</span>'; });
-  document.getElementById('file-breadcrumb').innerHTML=html;
+  var bc = document.getElementById('file-breadcrumb');
+  var parts = state.filePath.replace(/\\/g, '/').split('/').filter(Boolean);
+  bc.innerHTML = '';
+  var root = document.createElement('span');
+  root.textContent = 'C:';
+  root.addEventListener('click', function() { navigatePath('C:\\'); });
+  bc.appendChild(root);
+  var curPath = 'C:\\';
+  parts.forEach(function(p, i) {
+    if (i === 0 && p === 'C:') return;
+    curPath += p + '\\';
+    var sep = document.createElement('span');
+    sep.className = 'sep';
+    sep.innerHTML = '&#x25B8;';
+    bc.appendChild(sep);
+    var span = document.createElement('span');
+    span.textContent = p;
+    (function(cp) { span.addEventListener('click', function() { navigatePath(cp); }); })(curPath);
+    bc.appendChild(span);
+  });
 }
 
 /* ─── Photoshop ─── */
