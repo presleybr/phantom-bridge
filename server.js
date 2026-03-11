@@ -38,6 +38,7 @@ const http = require('http')
 const https = require('https')
 const path = require('path')
 const { URL } = require('url')
+const crypto = require('crypto')
 
 const app = express()
 app.use(cors())
@@ -57,12 +58,77 @@ const REGISTER_TOKEN = process.env.REGISTER_TOKEN || 'phantom-secret-2025'
 const GROQ_API_KEY = process.env.GROQ_API_KEY || ''
 const GROQ_MODEL = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile'
 
-// In-memory tunnel URL
-let tunnelUrl = null
-let lastSeen = null
+// ============================================================
+// MULTI-TENANT: Windows Agents registry
+// Each connected Windows machine is an "agent" with its own state
+// ============================================================
+const windowsAgents = new Map()
+const agentTokens = new Map() // token -> agentId
 
-// In-memory clients store
-let clients = [
+function createAgent(agentId, name, tunnelUrl, metadata) {
+  const token = crypto.randomBytes(32).toString('hex')
+  const agent = {
+    agentId,
+    name: name || agentId,
+    token,
+    tunnelUrl: tunnelUrl || null,
+    lastSeen: new Date().toISOString(),
+    registeredAt: new Date().toISOString(),
+    commandHistory: [],
+    messagesCount: 0,
+    tasksCount: 0,
+    broadcastCount: 0,
+    notifications: [],
+    aiSessions: {},
+    metadata: metadata || {}
+  }
+  windowsAgents.set(agentId, agent)
+  agentTokens.set(token, agentId)
+  return agent
+}
+
+function getAgent(agentId) {
+  return windowsAgents.get(agentId) || null
+}
+
+function resolveAgentId(req) {
+  // Explicit param
+  if (req.params && req.params.agentId) return req.params.agentId
+  // Query param
+  if (req.query && req.query.agentId) return req.query.agentId
+  // Header
+  if (req.headers['x-agent-id']) return req.headers['x-agent-id']
+  // Backward compat: if only one agent, use it
+  if (windowsAgents.size === 1) return windowsAgents.keys().next().value
+  // Legacy: use 'default' if it exists
+  if (windowsAgents.has('default')) return 'default'
+  return null
+}
+
+function getAgentOrFail(req, res) {
+  const agentId = resolveAgentId(req)
+  if (!agentId) {
+    res.status(400).json({ error: 'agentId required (multiple agents connected)', hint: 'Add ?agentId=xxx or x-agent-id header' })
+    return null
+  }
+  const agent = windowsAgents.get(agentId)
+  if (!agent) {
+    res.status(404).json({ error: 'Agent not found', agentId })
+    return null
+  }
+  return agent
+}
+
+// Backward compat: global tunnelUrl getter (for single-agent mode)
+function getDefaultTunnelUrl() {
+  if (windowsAgents.size === 0) return null
+  if (windowsAgents.size === 1) return windowsAgents.values().next().value.tunnelUrl
+  const def = windowsAgents.get('default')
+  return def ? def.tunnelUrl : null
+}
+
+// In-memory CRM clients store (renamed from 'clients' to avoid confusion with agents)
+let crmClients = [
   { id: '1', name: 'Elas Espeto e Marmitaria', status: 'active', type: 'Delivery + Website',
     url: 'https://elas-linktree.onrender.com', notes: 'Claudia Delivery system. API: https://claudia-delivery-api.onrender.com | Instagram: @elasespetoemarmitaria | Facebook: Ellos Marmitaria | WhatsApp: (67) 99645-0189 | Endereco: R. Tito Mello, Dourados-MS',
     createdAt: '2025-08-15T10:00:00Z',
@@ -82,36 +148,34 @@ let clients = [
     url: '', notes: 'Mac-Windows content automation. PSD: Arte_Feed.psd | Repo: tilika-ps-server | Server: 192.168.48.133:4000',
     createdAt: '2025-10-01T10:00:00Z' },
 ]
-let clientIdCounter = 4
+let crmClientIdCounter = 4
 
-// In-memory command history
-let commandHistory = []
-
-// In-memory server logs
+// In-memory server logs (global, not per-agent)
 const serverLogs = []
 const MAX_LOGS = 200
 const serverStartTime = Date.now()
 
-// Message and task counters
-let messagesCount = 0
-let tasksCount = 0
-let broadcastCount = 0
-
-// In-memory notifications
-let notifications = []
+// Global notification counter
 let notifIdCounter = 1
 
-function addNotification(title, body, type) {
+function addNotification(title, body, type, agentId) {
   const n = {
     id: String(notifIdCounter++),
     title,
     body: body || '',
     type: type || 'info',
     read: false,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    agentId: agentId || null
   }
-  notifications.unshift(n)
-  if (notifications.length > 100) notifications = notifications.slice(0, 100)
+  // Add to specific agent if provided
+  if (agentId) {
+    const agent = windowsAgents.get(agentId)
+    if (agent) {
+      agent.notifications.unshift(n)
+      if (agent.notifications.length > 100) agent.notifications = agent.notifications.slice(0, 100)
+    }
+  }
   return n
 }
 
@@ -139,10 +203,18 @@ console.error = function(...args) { captureLog('error', args); origError(...args
 // HELPER: proxy request to Windows
 // ============================================================
 
-function proxyToWindows(urlPath, method, payload, timeoutMs) {
+function proxyToWindows(urlPath, method, payload, timeoutMs, agentId) {
   return new Promise((resolve, reject) => {
-    if (!tunnelUrl) return reject(new Error('No tunnel registered'))
-    const target = new URL(urlPath, tunnelUrl)
+    // Resolve tunnel URL: use agentId if provided, else default
+    let tUrl = null
+    if (agentId) {
+      const agent = windowsAgents.get(agentId)
+      tUrl = agent ? agent.tunnelUrl : null
+    } else {
+      tUrl = getDefaultTunnelUrl()
+    }
+    if (!tUrl) return reject(new Error('No tunnel registered' + (agentId ? ' for agent ' + agentId : '')))
+    const target = new URL(urlPath, tUrl)
     const lib = target.protocol === 'https:' ? https : http
     const opts = {
       hostname: target.hostname,
@@ -175,31 +247,67 @@ function proxyToWindows(urlPath, method, payload, timeoutMs) {
 // ============================================================
 
 app.get('/status', (req, res) => {
+  const agentId = resolveAgentId(req)
+  // If specific agent requested
+  if (agentId && windowsAgents.has(agentId)) {
+    const agent = windowsAgents.get(agentId)
+    return res.json({
+      ok: !!agent.tunnelUrl,
+      tunnel: agent.tunnelUrl,
+      lastSeen: agent.lastSeen,
+      agentId: agent.agentId,
+      agentName: agent.name,
+      message: agent.tunnelUrl ? 'Agent online' : 'Agent offline'
+    })
+  }
+  // Aggregate: list all agents
+  const agents = Array.from(windowsAgents.values()).map(a => ({
+    agentId: a.agentId,
+    name: a.name,
+    online: !!a.tunnelUrl,
+    tunnelUrl: a.tunnelUrl,
+    lastSeen: a.lastSeen
+  }))
+  const anyOnline = agents.some(a => a.online)
   res.json({
-    ok: !!tunnelUrl,
-    tunnel: tunnelUrl,
-    lastSeen,
-    message: tunnelUrl ? 'PhantomBridge active' : 'No tunnel registered'
+    ok: anyOnline,
+    tunnel: getDefaultTunnelUrl(),
+    lastSeen: agents.length ? agents[0].lastSeen : null,
+    agents,
+    totalAgents: agents.length,
+    onlineAgents: agents.filter(a => a.online).length,
+    message: anyOnline ? 'PhantomBridge active (' + agents.filter(a => a.online).length + ' agents online)' : (agents.length ? 'All agents offline' : 'No agents registered')
   })
 })
 
 app.get('/health', async (req, res) => {
-  const result = { ok: true, bridge: 'phantom', tunnel: tunnelUrl, uptime: Math.floor((Date.now() - serverStartTime) / 1000) }
-
-  if (tunnelUrl) {
-    try {
-      const windowsHealth = await proxyToWindows('/health', 'GET', null, 4000)
-      result.windows = windowsHealth
-      result.windowsOnline = true
-    } catch (e) {
-      result.windows = null
-      result.windowsOnline = false
-      result.windowsError = e.message
-    }
-  } else {
-    result.windowsOnline = false
+  const result = {
+    ok: true,
+    bridge: 'phantom',
+    tunnel: getDefaultTunnelUrl(),
+    uptime: Math.floor((Date.now() - serverStartTime) / 1000),
+    totalAgents: windowsAgents.size,
+    onlineAgents: 0
   }
 
+  // Check all agents
+  const agentsStatus = []
+  for (const [id, agent] of windowsAgents) {
+    const s = { agentId: id, name: agent.name, online: false }
+    if (agent.tunnelUrl) {
+      try {
+        const h = await proxyToWindows('/health', 'GET', null, 4000, id)
+        s.online = true
+        s.health = h
+        result.onlineAgents++
+      } catch (e) {
+        s.error = e.message
+      }
+    }
+    agentsStatus.push(s)
+  }
+  result.agents = agentsStatus
+  result.windowsOnline = result.onlineAgents > 0
   res.json(result)
 })
 
@@ -209,21 +317,44 @@ app.get('/health', async (req, res) => {
 
 app.post('/register', (req, res) => {
   const token = req.headers['x-bridge-token'] || req.body.token
-  if (token !== REGISTER_TOKEN) {
+  // Allow registration with admin token OR existing agent token
+  const agentToken = req.headers['x-agent-token']
+  let authOk = (token === REGISTER_TOKEN)
+  let existingAgentId = null
+
+  if (!authOk && agentToken && agentTokens.has(agentToken)) {
+    authOk = true
+    existingAgentId = agentTokens.get(agentToken)
+  }
+
+  if (!authOk) {
     return res.status(401).json({ error: 'Invalid token' })
   }
 
-  const { url } = req.body
+  const { url, agentId, name, metadata } = req.body
   if (!url || !url.startsWith('https://')) {
     return res.status(400).json({ error: 'Invalid URL. Must be https://' })
   }
 
-  tunnelUrl = url.replace(/\/$/, '')
-  lastSeen = new Date().toISOString()
+  const cleanUrl = url.replace(/\/$/, '')
+  const resolvedId = existingAgentId || agentId || 'default'
 
-  console.log('[PhantomBridge] Tunnel registered: ' + tunnelUrl)
-  addNotification('Tunnel Connected', 'Windows registered: ' + tunnelUrl, 'success')
-  res.json({ ok: true, url: tunnelUrl, message: 'Tunnel registered successfully' })
+  // Update existing agent or create new
+  if (windowsAgents.has(resolvedId)) {
+    const agent = windowsAgents.get(resolvedId)
+    agent.tunnelUrl = cleanUrl
+    agent.lastSeen = new Date().toISOString()
+    if (name) agent.name = name
+    if (metadata) agent.metadata = { ...agent.metadata, ...metadata }
+    console.log('[PhantomBridge] Agent updated: ' + resolvedId + ' -> ' + cleanUrl)
+    addNotification('Agent Reconnected', resolvedId + ': ' + cleanUrl, 'success', resolvedId)
+    res.json({ ok: true, agentId: resolvedId, agentToken: agent.token, url: cleanUrl, message: 'Agent updated' })
+  } else {
+    const agent = createAgent(resolvedId, name || resolvedId, cleanUrl, metadata)
+    console.log('[PhantomBridge] New agent registered: ' + resolvedId + ' -> ' + cleanUrl)
+    addNotification('New Agent', resolvedId + ' connected: ' + cleanUrl, 'success', resolvedId)
+    res.json({ ok: true, agentId: resolvedId, agentToken: agent.token, url: cleanUrl, message: 'Agent registered. Save your agentToken for future requests.' })
+  }
 })
 
 // ============================================================
@@ -236,7 +367,8 @@ app.post('/api/command', async (req, res) => {
     return res.status(400).json({ error: 'Command is required' })
   }
 
-  messagesCount++
+  const agentId = resolveAgentId(req)
+  const agent = agentId ? windowsAgents.get(agentId) : null
 
   const entry = {
     id: Date.now().toString(),
@@ -244,13 +376,17 @@ app.post('/api/command', async (req, res) => {
     type: type || 'command',
     timestamp: new Date().toISOString(),
     status: 'sent',
-    response: null
+    response: null,
+    agentId: agentId || null
   }
 
-  commandHistory.unshift(entry)
-  if (commandHistory.length > 100) commandHistory = commandHistory.slice(0, 100)
+  if (agent) {
+    agent.messagesCount++
+    agent.commandHistory.unshift(entry)
+    if (agent.commandHistory.length > 100) agent.commandHistory = agent.commandHistory.slice(0, 100)
+  }
 
-  if (tunnelUrl) {
+  if (agent && agent.tunnelUrl) {
     try {
       const payload = JSON.stringify({
         message: command,
@@ -258,7 +394,7 @@ app.post('/api/command', async (req, res) => {
         type: type || 'command',
         timestamp: entry.timestamp
       })
-      const result = await proxyToWindows('/send-to-windows', 'POST', payload, 8000)
+      const result = await proxyToWindows('/send-to-windows', 'POST', payload, 8000, agentId)
       entry.status = 'delivered'
       entry.response = result
     } catch (err) {
@@ -267,14 +403,17 @@ app.post('/api/command', async (req, res) => {
     }
   } else {
     entry.status = 'no-tunnel'
-    entry.response = 'No tunnel registered'
+    entry.response = agentId ? 'Agent ' + agentId + ' has no tunnel' : 'No agent connected'
   }
 
   res.json({ ok: true, entry })
 })
 
 app.get('/api/command/history', (req, res) => {
-  res.json({ ok: true, history: commandHistory })
+  const agentId = resolveAgentId(req)
+  const agent = agentId ? windowsAgents.get(agentId) : null
+  const history = agent ? agent.commandHistory : []
+  res.json({ ok: true, history })
 })
 
 // ============================================================
@@ -307,7 +446,9 @@ app.post('/api/task/create', (req, res) => {
     return res.status(400).json({ error: 'Label is required' })
   }
 
-  tasksCount++
+  const agentId = resolveAgentId(req)
+  const agent = agentId ? windowsAgents.get(agentId) : null
+  if (agent) agent.tasksCount++
 
   const task = {
     id: Date.now().toString(),
@@ -317,20 +458,21 @@ app.post('/api/task/create', (req, res) => {
     status: 'pending',
     result: null,
     createdAt: new Date().toISOString(),
-    finishedAt: null
+    finishedAt: null,
+    agentId: agentId || null
   }
 
-  if (tunnelUrl) {
+  if (agent && agent.tunnelUrl) {
     const payload = JSON.stringify({
       message: JSON.stringify(task),
       from: 'phantom-dashboard',
       type: 'task',
       timestamp: task.createdAt
     })
-    proxyToWindows('/send-to-windows', 'POST', payload).catch(() => {})
+    proxyToWindows('/send-to-windows', 'POST', payload, 8000, agentId).catch(() => {})
   }
 
-  addNotification('Task Created', task.label, 'info')
+  addNotification('Task Created', task.label, 'info', agentId)
   res.json({ ok: true, task })
 })
 
@@ -339,7 +481,7 @@ app.post('/api/task/create', (req, res) => {
 // ============================================================
 
 app.get('/api/clients', (req, res) => {
-  res.json({ ok: true, clients })
+  res.json({ ok: true, clients: crmClients })
 })
 
 app.post('/api/clients', (req, res) => {
@@ -349,15 +491,15 @@ app.post('/api/clients', (req, res) => {
   }
 
   if (id) {
-    const idx = clients.findIndex(c => c.id === id)
+    const idx = crmClients.findIndex(c => c.id === id)
     if (idx >= 0) {
-      clients[idx] = { ...clients[idx], name, status: status || 'active', type: type || '', url: url || '', notes: notes || '' }
-      return res.json({ ok: true, client: clients[idx], action: 'updated' })
+      crmClients[idx] = { ...crmClients[idx], name, status: status || 'active', type: type || '', url: url || '', notes: notes || '' }
+      return res.json({ ok: true, client: crmClients[idx], action: 'updated' })
     }
   }
 
   const client = {
-    id: String(clientIdCounter++),
+    id: String(crmClientIdCounter++),
     name,
     status: status || 'active',
     type: type || '',
@@ -365,14 +507,14 @@ app.post('/api/clients', (req, res) => {
     notes: notes || '',
     createdAt: new Date().toISOString()
   }
-  clients.push(client)
+  crmClients.push(client)
   res.json({ ok: true, client, action: 'created' })
 })
 
 app.delete('/api/clients/:id', (req, res) => {
-  const idx = clients.findIndex(c => c.id === req.params.id)
+  const idx = crmClients.findIndex(c => c.id === req.params.id)
   if (idx < 0) return res.status(404).json({ error: 'Client not found' })
-  const removed = clients.splice(idx, 1)[0]
+  const removed = crmClients.splice(idx, 1)[0]
   res.json({ ok: true, removed })
 })
 
@@ -395,8 +537,10 @@ app.get('/api/logs', (req, res) => {
 // ============================================================
 
 app.post('/api/screenshot', async (req, res) => {
-  if (!tunnelUrl) {
-    return res.status(503).json({ error: 'No tunnel registered', hint: 'Windows must be connected' })
+  const agentId = resolveAgentId(req)
+  const agent = agentId ? windowsAgents.get(agentId) : null
+  if (!agent || !agent.tunnelUrl) {
+    return res.status(503).json({ error: 'No agent connected', hint: 'Windows must be connected' })
   }
 
   try {
@@ -406,9 +550,9 @@ app.post('/api/screenshot', async (req, res) => {
       type: 'screenshot',
       timestamp: new Date().toISOString()
     })
-    const result = await proxyToWindows('/send-to-windows', 'POST', payload, 10000)
-    console.log('[PhantomBridge] Screenshot requested')
-    res.json({ ok: true, message: 'Screenshot request sent', response: result })
+    const result = await proxyToWindows('/send-to-windows', 'POST', payload, 10000, agentId)
+    console.log('[PhantomBridge] Screenshot requested from ' + agentId)
+    res.json({ ok: true, message: 'Screenshot request sent', agentId, response: result })
   } catch (err) {
     res.status(502).json({ error: 'Failed to request screenshot', detail: err.message })
   }
@@ -420,25 +564,41 @@ app.post('/api/screenshot', async (req, res) => {
 
 app.get('/api/stats', (req, res) => {
   const uptimeSeconds = Math.floor((Date.now() - serverStartTime) / 1000)
+  const agentId = resolveAgentId(req)
+  const agent = agentId ? windowsAgents.get(agentId) : null
+
+  // Aggregate stats across all agents
+  let totalMessages = 0, totalTasks = 0, totalCommands = 0, totalBroadcasts = 0
+  for (const a of windowsAgents.values()) {
+    totalMessages += a.messagesCount
+    totalTasks += a.tasksCount
+    totalCommands += a.commandHistory.length
+    totalBroadcasts += a.broadcastCount
+  }
+
   res.json({
     ok: true,
     uptime: uptimeSeconds,
     uptimeFormatted: formatUptime(uptimeSeconds),
-    tunnelRegistered: !!tunnelUrl,
-    messagesSent: messagesCount,
-    tasksCreated: tasksCount,
-    commandsSent: commandHistory.length,
-    clientsCount: clients.length,
+    tunnelRegistered: !!getDefaultTunnelUrl(),
+    messagesSent: agent ? agent.messagesCount : totalMessages,
+    tasksCreated: agent ? agent.tasksCount : totalTasks,
+    commandsSent: agent ? agent.commandHistory.length : totalCommands,
+    clientsCount: crmClients.length,
     // extended stats
-    messagesCount,
-    tasksCount,
-    commandHistoryCount: commandHistory.length,
-    broadcastCount,
-    tunnelActive: !!tunnelUrl,
-    tunnelUrl,
-    lastSeen,
+    messagesCount: agent ? agent.messagesCount : totalMessages,
+    tasksCount: agent ? agent.tasksCount : totalTasks,
+    commandHistoryCount: agent ? agent.commandHistory.length : totalCommands,
+    broadcastCount: agent ? agent.broadcastCount : totalBroadcasts,
+    tunnelActive: agent ? !!agent.tunnelUrl : !!getDefaultTunnelUrl(),
+    tunnelUrl: agent ? agent.tunnelUrl : getDefaultTunnelUrl(),
+    lastSeen: agent ? agent.lastSeen : null,
     logsCount: serverLogs.length,
-    serverStartTime: new Date(serverStartTime).toISOString()
+    serverStartTime: new Date(serverStartTime).toISOString(),
+    // Multi-tenant info
+    totalAgents: windowsAgents.size,
+    onlineAgents: Array.from(windowsAgents.values()).filter(a => !!a.tunnelUrl).length,
+    currentAgent: agentId || null
   })
 })
 
@@ -459,8 +619,10 @@ function formatUptime(s) {
 // ============================================================
 
 app.post('/api/restart-tunnel', async (req, res) => {
-  if (!tunnelUrl) {
-    return res.status(503).json({ error: 'No tunnel registered' })
+  const agentId = resolveAgentId(req)
+  const agent = agentId ? windowsAgents.get(agentId) : null
+  if (!agent || !agent.tunnelUrl) {
+    return res.status(503).json({ error: 'No agent connected' })
   }
 
   try {
@@ -470,10 +632,10 @@ app.post('/api/restart-tunnel', async (req, res) => {
       type: 'system',
       timestamp: new Date().toISOString()
     })
-    const result = await proxyToWindows('/send-to-windows', 'POST', payload, 10000)
-    console.log('[PhantomBridge] Tunnel restart requested')
-    addNotification('Tunnel Restart', 'Restart signal sent to Windows', 'warn')
-    res.json({ ok: true, message: 'Tunnel restart request sent', response: result })
+    const result = await proxyToWindows('/send-to-windows', 'POST', payload, 10000, agentId)
+    console.log('[PhantomBridge] Tunnel restart requested for ' + agentId)
+    addNotification('Tunnel Restart', 'Restart signal sent to ' + agentId, 'warn', agentId)
+    res.json({ ok: true, message: 'Tunnel restart request sent', agentId, response: result })
   } catch (err) {
     res.status(502).json({ error: 'Failed to send restart request', detail: err.message })
   }
@@ -485,11 +647,13 @@ app.post('/api/restart-tunnel', async (req, res) => {
 
 app.post('/api/ping', async (req, res) => {
   const start = Date.now()
-  const result = { ok: true, timestamp: new Date().toISOString(), bridgeAlive: true }
+  const agentId = resolveAgentId(req)
+  const agent = agentId ? windowsAgents.get(agentId) : null
+  const result = { ok: true, timestamp: new Date().toISOString(), bridgeAlive: true, agentId: agentId || null }
 
-  if (tunnelUrl) {
+  if (agent && agent.tunnelUrl) {
     try {
-      await proxyToWindows('/health', 'GET', null, 5000)
+      await proxyToWindows('/health', 'GET', null, 5000, agentId)
       result.windowsLatencyMs = Date.now() - start
       result.windowsAlive = true
     } catch (e) {
@@ -511,33 +675,40 @@ app.post('/api/ping', async (req, res) => {
 // ============================================================
 
 app.post('/api/broadcast', async (req, res) => {
-  const { message, type } = req.body
+  const { message, type, agentId: targetAgent } = req.body
   if (!message) {
     return res.status(400).json({ error: 'Message is required' })
   }
 
-  broadcastCount++
   const results = []
+  const payload = JSON.stringify({
+    message,
+    from: 'phantom-broadcast',
+    type: type || 'broadcast',
+    timestamp: new Date().toISOString()
+  })
 
-  if (tunnelUrl) {
-    try {
-      const payload = JSON.stringify({
-        message,
-        from: 'phantom-broadcast',
-        type: type || 'broadcast',
-        timestamp: new Date().toISOString()
-      })
-      const r = await proxyToWindows('/send-to-windows', 'POST', payload, 5000)
-      results.push({ target: 'windows', status: 'sent', response: r })
-    } catch (err) {
-      results.push({ target: 'windows', status: 'error', error: err.message })
+  // If specific agent targeted, send only to that one
+  const targets = targetAgent ? [targetAgent] : Array.from(windowsAgents.keys())
+
+  for (const id of targets) {
+    const agent = windowsAgents.get(id)
+    if (!agent) { results.push({ agentId: id, status: 'not-found' }); continue }
+    agent.broadcastCount++
+    if (agent.tunnelUrl) {
+      try {
+        const r = await proxyToWindows('/send-to-windows', 'POST', payload, 5000, id)
+        results.push({ agentId: id, name: agent.name, status: 'sent', response: r })
+      } catch (err) {
+        results.push({ agentId: id, name: agent.name, status: 'error', error: err.message })
+      }
+    } else {
+      results.push({ agentId: id, name: agent.name, status: 'skipped', reason: 'no tunnel' })
     }
-  } else {
-    results.push({ target: 'windows', status: 'skipped', reason: 'no tunnel' })
   }
 
-  console.log('[PhantomBridge] Broadcast sent: ' + message.substring(0, 50))
-  res.json({ ok: true, broadcastId: broadcastCount, results })
+  console.log('[PhantomBridge] Broadcast to ' + targets.length + ' agents: ' + message.substring(0, 50))
+  res.json({ ok: true, results })
 })
 
 // ============================================================
@@ -545,36 +716,38 @@ app.post('/api/broadcast', async (req, res) => {
 // ============================================================
 
 app.get('/api/system-info', async (req, res) => {
+  const agentId = resolveAgentId(req)
   const info = {
     ok: true,
     bridge: {
-      version: '3.0.0',
+      version: '4.0.0',
       platform: process.platform,
       nodeVersion: process.version,
       uptime: Math.floor((Date.now() - serverStartTime) / 1000),
       memoryUsage: process.memoryUsage(),
       pid: process.pid
     },
-    tunnel: {
-      url: tunnelUrl,
-      active: !!tunnelUrl,
-      lastSeen
+    agents: {
+      total: windowsAgents.size,
+      online: Array.from(windowsAgents.values()).filter(a => !!a.tunnelUrl).length,
+      list: Array.from(windowsAgents.values()).map(a => ({ agentId: a.agentId, name: a.name, online: !!a.tunnelUrl, lastSeen: a.lastSeen }))
     },
     stats: {
-      messagesCount,
-      tasksCount,
-      commandHistoryCount: commandHistory.length,
-      clientsCount: clients.length,
+      crmClientsCount: crmClients.length,
       logsCount: serverLogs.length
     }
   }
 
-  if (tunnelUrl) {
-    try {
-      info.windows = await proxyToWindows('/health', 'GET', null, 5000)
-    } catch (e) {
-      info.windows = null
-      info.windowsError = e.message
+  // If specific agent, get its Windows health
+  if (agentId) {
+    const agent = windowsAgents.get(agentId)
+    if (agent && agent.tunnelUrl) {
+      try {
+        info.windows = await proxyToWindows('/health', 'GET', null, 5000, agentId)
+      } catch (e) {
+        info.windows = null
+        info.windowsError = e.message
+      }
     }
   }
 
@@ -669,16 +842,20 @@ app.post('/api/remote-execute', async (req, res) => {
     }
   }
 
-  messagesCount++
+  const agentId = resolveAgentId(req)
+  const agent = agentId ? windowsAgents.get(agentId) : null
+  if (agent) agent.messagesCount++
+
   const entry = {
     id: Date.now().toString(),
     command: finalCmd,
     source: 'remote-execute',
     timestamp: new Date().toISOString(),
-    status: 'sent'
+    status: 'sent',
+    agentId: agentId || null
   }
 
-  if (tunnelUrl) {
+  if (agent && agent.tunnelUrl) {
     try {
       const payload = JSON.stringify({
         message: finalCmd,
@@ -686,7 +863,7 @@ app.post('/api/remote-execute', async (req, res) => {
         type: 'remote-command',
         timestamp: entry.timestamp
       })
-      const result = await proxyToWindows('/send-to-windows', 'POST', payload, 15000)
+      const result = await proxyToWindows('/send-to-windows', 'POST', payload, 15000, agentId)
       entry.status = 'delivered'
       entry.response = result
     } catch (err) {
@@ -695,11 +872,13 @@ app.post('/api/remote-execute', async (req, res) => {
     }
   } else {
     entry.status = 'no-tunnel'
-    entry.response = 'No tunnel registered'
+    entry.response = 'No agent connected'
   }
 
-  commandHistory.unshift(entry)
-  if (commandHistory.length > 100) commandHistory = commandHistory.slice(0, 100)
+  if (agent) {
+    agent.commandHistory.unshift(entry)
+    if (agent.commandHistory.length > 100) agent.commandHistory = agent.commandHistory.slice(0, 100)
+  }
   res.json({ ok: true, entry })
 })
 
@@ -767,7 +946,6 @@ app.post('/api/ai/execute', async (req, res) => {
   }
 
   const cmd = command || action
-  messagesCount++
 
   const entry = {
     id: Date.now().toString(),
@@ -779,13 +957,16 @@ app.post('/api/ai/execute', async (req, res) => {
 
   // Handle built-in queries locally
   if (cmd === 'status' || cmd === 'check-status') {
+    const agentId = resolveAgentId(req)
+    const agent = agentId ? windowsAgents.get(agentId) : null
     const stats = {
-      tunnelActive: !!tunnelUrl,
-      tunnelUrl,
+      tunnelActive: agent ? !!agent.tunnelUrl : !!getDefaultTunnelUrl(),
+      tunnelUrl: agent ? agent.tunnelUrl : getDefaultTunnelUrl(),
       uptime: formatUptime(Math.floor((Date.now() - serverStartTime) / 1000)),
-      messagesCount,
-      tasksCount,
-      clientsCount: clients.length
+      messagesCount: agent ? agent.messagesCount : 0,
+      tasksCount: agent ? agent.tasksCount : 0,
+      clientsCount: crmClients.length,
+      totalAgents: windowsAgents.size
     }
     entry.status = 'completed'
     entry.response = stats
@@ -793,7 +974,11 @@ app.post('/api/ai/execute', async (req, res) => {
   }
 
   // Forward to Windows
-  if (tunnelUrl) {
+  const aiAgentId = resolveAgentId(req)
+  const aiAgent = aiAgentId ? windowsAgents.get(aiAgentId) : null
+  if (aiAgent) aiAgent.messagesCount++
+
+  if (aiAgent && aiAgent.tunnelUrl) {
     try {
       const payload = JSON.stringify({
         message: cmd,
@@ -801,7 +986,7 @@ app.post('/api/ai/execute', async (req, res) => {
         type: 'ai-command',
         timestamp: entry.timestamp
       })
-      const result = await proxyToWindows('/send-to-windows', 'POST', payload, 10000)
+      const result = await proxyToWindows('/send-to-windows', 'POST', payload, 10000, aiAgentId)
       entry.status = 'delivered'
       entry.response = result
     } catch (err) {
@@ -810,11 +995,13 @@ app.post('/api/ai/execute', async (req, res) => {
     }
   } else {
     entry.status = 'no-tunnel'
-    entry.response = 'No tunnel registered. Windows must be connected.'
+    entry.response = 'No agent connected. Windows must be connected.'
   }
 
-  commandHistory.unshift(entry)
-  if (commandHistory.length > 100) commandHistory = commandHistory.slice(0, 100)
+  if (aiAgent) {
+    aiAgent.commandHistory.unshift(entry)
+    if (aiAgent.commandHistory.length > 100) aiAgent.commandHistory = aiAgent.commandHistory.slice(0, 100)
+  }
 
   res.json({ ok: true, entry })
 })
@@ -824,17 +1011,23 @@ app.post('/api/ai/execute', async (req, res) => {
 // ============================================================
 
 app.get('/api/notifications', (req, res) => {
-  const unread = notifications.filter(n => !n.read).length
-  res.json({ ok: true, notifications: notifications.slice(0, 50), unreadCount: unread })
+  const agentId = resolveAgentId(req)
+  const agent = agentId ? windowsAgents.get(agentId) : null
+  const notifs = agent ? agent.notifications : []
+  const unread = notifs.filter(n => !n.read).length
+  res.json({ ok: true, notifications: notifs.slice(0, 50), unreadCount: unread, agentId: agentId || null })
 })
 
 app.post('/api/notifications/read', (req, res) => {
   const { id } = req.body
+  const agentId = resolveAgentId(req)
+  const agent = agentId ? windowsAgents.get(agentId) : null
+  if (!agent) return res.json({ ok: true })
   if (id) {
-    const n = notifications.find(n => n.id === id)
+    const n = agent.notifications.find(n => n.id === id)
     if (n) n.read = true
   } else {
-    notifications.forEach(n => { n.read = true })
+    agent.notifications.forEach(n => { n.read = true })
   }
   res.json({ ok: true })
 })
@@ -1045,24 +1238,28 @@ const AI_INTENTS = {
   }
 }
 
-// AI Sessions storage
-let aiSessions = {}
+// AI Sessions storage (per-agent)
 const MAX_SESSIONS = 50
 const MAX_SESSION_HISTORY = 100
 
-function getOrCreateSession(sessionId) {
+function getOrCreateSession(sessionId, agentId) {
   if (!sessionId) sessionId = 'session-' + Date.now()
-  if (!aiSessions[sessionId]) {
-    aiSessions[sessionId] = {
+  // Use agent-specific sessions if available, else global fallback
+  const agent = agentId ? windowsAgents.get(agentId) : null
+  const sessions = agent ? agent.aiSessions : (getOrCreateSession._global = getOrCreateSession._global || {})
+  if (!sessions[sessionId]) {
+    sessions[sessionId] = {
       id: sessionId,
       history: [],
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      agentId: agentId || null
     }
-    const keys = Object.keys(aiSessions)
-    if (keys.length > MAX_SESSIONS) delete aiSessions[keys[0]]
+    const keys = Object.keys(sessions)
+    if (keys.length > MAX_SESSIONS) delete sessions[keys[0]]
   }
-  return aiSessions[sessionId]
+  return sessions[sessionId]
 }
+getOrCreateSession._global = {}
 
 function matchIntent(message) {
   const lower = message.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
@@ -1094,7 +1291,7 @@ function matchIntent(message) {
   return bestMatch && bestScore > 15 ? bestMatch : null
 }
 
-async function executeActions(actions, param) {
+async function executeActions(actions, param, agentId) {
   const results = []
   for (const action of actions) {
     const step = { label: action.label, status: 'running', startTime: Date.now() }
@@ -1108,13 +1305,13 @@ async function executeActions(actions, param) {
           type: 'ai-command',
           timestamp: new Date().toISOString()
         })
-        const result = await proxyToWindows('/send-to-windows', 'POST', payload, 15000)
+        const result = await proxyToWindows('/send-to-windows', 'POST', payload, 15000, agentId)
         step.result = result
         step.status = 'done'
       } else if (action.type === 'api') {
         const result = action.method === 'POST'
-          ? await proxyToWindows(action.endpoint, 'POST', '{}', 5000)
-          : await proxyToWindows(action.endpoint, 'GET', null, 5000)
+          ? await proxyToWindows(action.endpoint, 'POST', '{}', 5000, agentId)
+          : await proxyToWindows(action.endpoint, 'GET', null, 5000, agentId)
         step.result = result
         step.status = 'done'
       } else if (action.type === 'fetch') {
@@ -1263,7 +1460,9 @@ app.post('/api/ai/chat', async (req, res) => {
   const { message, sessionId, confirmed } = req.body
   if (!message) return res.status(400).json({ error: 'message is required' })
 
-  const session = getOrCreateSession(sessionId)
+  const chatAgentId = resolveAgentId(req)
+  const chatAgent = chatAgentId ? windowsAgents.get(chatAgentId) : null
+  const session = getOrCreateSession(sessionId, chatAgentId)
 
   session.history.push({
     role: 'user',
@@ -1288,7 +1487,7 @@ app.post('/api/ai/chat', async (req, res) => {
         }
         // If Groq identified a command to execute
         if (groqResult.executeCommand) {
-          messagesCount++
+          if (chatAgent) chatAgent.messagesCount++
           const payload = JSON.stringify({
             message: groqResult.executeCommand,
             from: 'phantom-ai-groq',
@@ -1296,7 +1495,7 @@ app.post('/api/ai/chat', async (req, res) => {
             timestamp: new Date().toISOString()
           })
           try {
-            const cmdResult = await proxyToWindows('/send-to-windows', 'POST', payload, 15000)
+            const cmdResult = await proxyToWindows('/send-to-windows', 'POST', payload, 15000, chatAgentId)
             aiMsg.actions = [{ label: groqResult.executeCommand, status: 'done', result: cmdResult, duration: 0 }]
             aiMsg.type = 'action'
           } catch (err) {
@@ -1348,8 +1547,8 @@ app.post('/api/ai/chat', async (req, res) => {
     return res.json({ ok: true, sessionId: session.id, response: aiMsg, needsConfirmation: true })
   }
 
-  messagesCount++
-  const results = await executeActions(match.config.actions, match.param)
+  if (chatAgent) chatAgent.messagesCount++
+  const results = await executeActions(match.config.actions, match.param, chatAgentId)
 
   const responseText = generateResponse(match.intent, match, results)
   const aiMsg = {
@@ -1371,20 +1570,87 @@ app.post('/api/ai/chat', async (req, res) => {
 
 // GET /api/ai/sessions - List active AI sessions
 app.get('/api/ai/sessions', (req, res) => {
-  const sessions = Object.values(aiSessions).map(s => ({
+  const agentId = resolveAgentId(req)
+  const agent = agentId ? windowsAgents.get(agentId) : null
+  const sessions = agent ? agent.aiSessions : getOrCreateSession._global
+  const list = Object.values(sessions).map(s => ({
     id: s.id,
     messageCount: s.history.length,
     createdAt: s.createdAt,
     lastMessage: s.history.length ? s.history[s.history.length - 1].timestamp : null
   }))
-  res.json({ ok: true, sessions })
+  res.json({ ok: true, sessions: list })
 })
 
 // GET /api/ai/session/:id - Get specific session history
 app.get('/api/ai/session/:id', (req, res) => {
-  const session = aiSessions[req.params.id]
+  const agentId = resolveAgentId(req)
+  const agent = agentId ? windowsAgents.get(agentId) : null
+  const sessions = agent ? agent.aiSessions : getOrCreateSession._global
+  const session = sessions[req.params.id]
   if (!session) return res.status(404).json({ error: 'Session not found' })
   res.json({ ok: true, session })
+})
+
+// ============================================================
+// API: Windows Agents Management (Multi-tenant)
+// ============================================================
+
+app.get('/api/agents', (req, res) => {
+  const agents = Array.from(windowsAgents.values()).map(a => ({
+    agentId: a.agentId,
+    name: a.name,
+    online: !!a.tunnelUrl,
+    tunnelUrl: a.tunnelUrl,
+    lastSeen: a.lastSeen,
+    registeredAt: a.registeredAt,
+    messagesCount: a.messagesCount,
+    commandsCount: a.commandHistory.length,
+    metadata: a.metadata
+  }))
+  res.json({ ok: true, agents, total: agents.length })
+})
+
+app.get('/api/agents/:agentId', (req, res) => {
+  const agent = windowsAgents.get(req.params.agentId)
+  if (!agent) return res.status(404).json({ error: 'Agent not found' })
+  res.json({
+    ok: true,
+    agent: {
+      agentId: agent.agentId,
+      name: agent.name,
+      online: !!agent.tunnelUrl,
+      tunnelUrl: agent.tunnelUrl,
+      lastSeen: agent.lastSeen,
+      registeredAt: agent.registeredAt,
+      messagesCount: agent.messagesCount,
+      tasksCount: agent.tasksCount,
+      commandsCount: agent.commandHistory.length,
+      metadata: agent.metadata
+    }
+  })
+})
+
+app.delete('/api/agents/:agentId', (req, res) => {
+  const token = req.headers['x-bridge-token']
+  if (token !== REGISTER_TOKEN) {
+    return res.status(401).json({ error: 'Admin token required' })
+  }
+  const agent = windowsAgents.get(req.params.agentId)
+  if (!agent) return res.status(404).json({ error: 'Agent not found' })
+  agentTokens.delete(agent.token)
+  windowsAgents.delete(req.params.agentId)
+  console.log('[PhantomBridge] Agent removed: ' + req.params.agentId)
+  res.json({ ok: true, removed: req.params.agentId })
+})
+
+app.post('/api/agents/:agentId/disconnect', (req, res) => {
+  const agent = windowsAgents.get(req.params.agentId)
+  if (!agent) return res.status(404).json({ error: 'Agent not found' })
+  agent.tunnelUrl = null
+  agent.lastSeen = new Date().toISOString()
+  console.log('[PhantomBridge] Agent disconnected: ' + req.params.agentId)
+  res.json({ ok: true, agentId: req.params.agentId, message: 'Agent disconnected' })
 })
 
 // ============================================================
@@ -1392,14 +1658,19 @@ app.get('/api/ai/session/:id', (req, res) => {
 // ============================================================
 
 app.use('/', (req, res) => {
-  if (!tunnelUrl) {
+  const agentId = resolveAgentId(req)
+  const agent = agentId ? windowsAgents.get(agentId) : null
+  const tUrl = agent ? agent.tunnelUrl : getDefaultTunnelUrl()
+
+  if (!tUrl) {
     return res.status(503).json({
       error: 'No tunnel registered',
-      hint: 'Windows server must POST /register with tunnel URL'
+      hint: 'Windows agent must POST /register with tunnel URL and agentId',
+      agents: windowsAgents.size
     })
   }
 
-  const target = new URL(req.url, tunnelUrl)
+  const target = new URL(req.url, tUrl)
   const isHttps = target.protocol === 'https:'
   const lib = isHttps ? https : http
 
@@ -1444,7 +1715,8 @@ app.use('/', (req, res) => {
 const PORT = process.env.PORT || 3001
 app.listen(PORT, () => {
   console.log('[PhantomBridge] Running on port ' + PORT)
+  console.log('[PhantomBridge] Multi-tenant mode enabled')
   console.log('[PhantomBridge] Register URL: POST /register (x-bridge-token: ' + REGISTER_TOKEN + ')')
+  console.log('[PhantomBridge] Agents API: GET /api/agents')
   console.log('[PhantomBridge] Dashboard: http://localhost:' + PORT + '/dashboard')
-  addNotification('System Started', 'PhantomOS v3.0 initialized', 'success')
 })
