@@ -3,18 +3,21 @@
   "version": "1.0.0",
   "description": "PhantomOS Windows Agent - connects Windows PC to PhantomBridge",
   "main": "index.js",
+  "bin": "index.js",
   "scripts": {
     "start": "node index.js",
+    "build": "pkg . --targets node18-win-x64 --output dist/PhantomAgent.exe --compress GZip",
     "install-service": "node service.js install",
     "uninstall-service": "node service.js uninstall"
   },
-  "dependencies": {
-    "express": "^4.18.2",
-    "node-windows": "^1.0.0-beta.8"
+  "dependencies": {},
+  "devDependencies": {
+    "pkg": "^5.8.1"
   },
   "pkg": {
     "targets": ["node18-win-x64"],
     "outputPath": "dist",
-    "assets": ["config.json"]
+    "assets": ["config.json"],
+    "scripts": ["index.js"]
   }
 }

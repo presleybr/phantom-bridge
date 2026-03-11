@@ -1,17 +1,15 @@
 /**
- * PhantomOS Windows Agent
+ * PhantomOS Windows Agent v1.0.0
  *
- * Runs on the client's Windows PC. Starts a local HTTP server,
- * opens a Cloudflare tunnel, and registers with PhantomBridge.
- * Executes commands received from the dashboard.
+ * Standalone agent for Windows clients. Zero external dependencies.
+ * Starts local HTTP server, opens Cloudflare tunnel, registers with PhantomBridge.
  *
  * Usage:
- *   node index.js                     (uses config.json)
- *   node index.js --setup             (interactive first-time setup)
- *   node index.js --agentId=office-pc (override agentId)
+ *   PhantomAgent.exe                      (uses config.json)
+ *   PhantomAgent.exe --setup              (interactive first-time setup)
+ *   PhantomAgent.exe --agentId=office-pc  (override agentId)
  */
 
-const express = require('express')
 const http = require('http')
 const https = require('https')
 const { exec, spawn } = require('child_process')
@@ -24,7 +22,10 @@ const { URL } = require('url')
 // CONFIG
 // ============================================================
 
-const CONFIG_PATH = path.join(__dirname, 'config.json')
+// When running as pkg .exe, __dirname is a snapshot. Use cwd for config.
+const CONFIG_DIR = process.pkg ? path.dirname(process.execPath) : __dirname
+const CONFIG_PATH = path.join(CONFIG_DIR, 'config.json')
+
 let config = {
   bridgeUrl: 'https://phantom-bridge.onrender.com',
   bridgeToken: 'phantom-secret-2025',
@@ -39,8 +40,7 @@ let config = {
 function loadConfig() {
   try {
     if (fs.existsSync(CONFIG_PATH)) {
-      const raw = fs.readFileSync(CONFIG_PATH, 'utf-8')
-      config = { ...config, ...JSON.parse(raw) }
+      config = { ...config, ...JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8')) }
     }
   } catch (e) {
     log('WARN', 'Failed to load config: ' + e.message)
@@ -55,13 +55,12 @@ function saveConfig() {
   }
 }
 
-// Parse CLI args
 function parseArgs() {
   const args = process.argv.slice(2)
   for (const arg of args) {
     if (arg === '--setup') { config._setup = true; continue }
-    const match = arg.match(/^--(\w+)=(.+)$/)
-    if (match) config[match[1]] = match[2]
+    const m = arg.match(/^--(\w+)=(.+)$/)
+    if (m) config[m[1]] = m[2]
   }
 }
 
@@ -69,11 +68,14 @@ function parseArgs() {
 // LOGGING
 // ============================================================
 
+const LOG_PATH = path.join(CONFIG_DIR, 'agent.log')
+
 function log(level, msg) {
   const ts = new Date().toISOString().replace('T', ' ').substring(0, 19)
-  const prefix = { INFO: '\x1b[36m', WARN: '\x1b[33m', ERROR: '\x1b[31m', OK: '\x1b[32m' }
-  const reset = '\x1b[0m'
-  console.log(`${prefix[level] || ''}[${ts}] [${level}]${reset} ${msg}`)
+  const colors = { INFO: '\x1b[36m', WARN: '\x1b[33m', ERROR: '\x1b[31m', OK: '\x1b[32m' }
+  console.log((colors[level] || '') + '[' + ts + '] [' + level + ']\x1b[0m ' + msg)
+  // Also write to log file
+  try { fs.appendFileSync(LOG_PATH, '[' + ts + '] [' + level + '] ' + msg + '\n') } catch {}
 }
 
 // ============================================================
@@ -138,15 +140,9 @@ async function handleCommand(message, type) {
   const cmd = message.trim()
   log('INFO', 'Executing: ' + cmd.substring(0, 80))
 
-  // Special built-in commands
-  if (cmd === 'screenshot') {
-    return await takeScreenshot()
-  }
-  if (cmd.startsWith('ps-')) {
-    return await handlePhotoshopCommand(cmd)
-  }
+  if (cmd === 'screenshot') return await takeScreenshot()
+  if (cmd.startsWith('ps-')) return await handlePhotoshopCommand(cmd)
 
-  // Regular shell command
   const result = await executeCommand(cmd)
   log(result.ok ? 'OK' : 'WARN', 'Result: ' + (result.output || result.error || '').substring(0, 100))
   return result
@@ -154,25 +150,24 @@ async function handleCommand(message, type) {
 
 async function takeScreenshot() {
   const screenshotPath = path.join(os.tmpdir(), 'phantom-screenshot-' + Date.now() + '.png')
-  const psCmd = `powershell "Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.Screen]::PrimaryScreen | ForEach { $b = $_.Bounds; $bmp = New-Object System.Drawing.Bitmap($b.Width,$b.Height); $g = [System.Drawing.Graphics]::FromImage($bmp); $g.CopyFromScreen($b.Location,[System.Drawing.Point]::Empty,$b.Size); $bmp.Save('${screenshotPath.replace(/\\/g, '\\\\')}'); $g.Dispose(); $bmp.Dispose() }"`
-  const result = await executeCommand(psCmd)
+  const psCmd = 'powershell "Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.Screen]::PrimaryScreen | ForEach { $b = $_.Bounds; $bmp = New-Object System.Drawing.Bitmap($b.Width,$b.Height); $g = [System.Drawing.Graphics]::FromImage($bmp); $g.CopyFromScreen($b.Location,[System.Drawing.Point]::Empty,$b.Size); $bmp.Save(\'' + screenshotPath.replace(/\\/g, '\\\\') + '\'); $g.Dispose(); $bmp.Dispose() }"'
+  await executeCommand(psCmd)
   if (fs.existsSync(screenshotPath)) {
     const base64 = fs.readFileSync(screenshotPath, 'base64')
-    fs.unlinkSync(screenshotPath)
-    return { ok: true, type: 'screenshot', image: 'data:image/png;base64,' + base64.substring(0, 500) + '...', size: base64.length, path: screenshotPath }
+    try { fs.unlinkSync(screenshotPath) } catch {}
+    return { ok: true, type: 'screenshot', size: base64.length }
   }
-  return { ok: false, error: 'Screenshot failed', detail: result }
+  return { ok: false, error: 'Screenshot failed' }
 }
 
 async function handlePhotoshopCommand(cmd) {
-  const psCommands = {
+  const cmds = {
     'ps-open-psd': 'Start-Process "C:\\Program Files\\Adobe\\Adobe Photoshop 2024\\Photoshop.exe"',
-    'ps-export-png': 'echo "Export PNG - requires JSX script integration"',
-    'ps-list-layers': 'echo "List layers - requires JSX script integration"',
-    'ps-script': 'echo "Run script - requires JSX script integration"'
+    'ps-export-png': 'echo "Export PNG - requires JSX script"',
+    'ps-list-layers': 'echo "List layers - requires JSX script"'
   }
-  const psCmd = psCommands[cmd]
-  if (!psCmd) return { ok: false, error: 'Unknown Photoshop command: ' + cmd }
+  const psCmd = cmds[cmd]
+  if (!psCmd) return { ok: false, error: 'Unknown PS command: ' + cmd }
   return await executeCommand('powershell "' + psCmd + '"')
 }
 
@@ -187,20 +182,13 @@ function listFiles(dirPath) {
       ok: true,
       path: dirPath,
       files: items.map(item => {
-        const fullPath = path.join(dirPath, item.name)
-        let size = null
-        let modified = null
+        let size = null, modified = null
         try {
-          const stat = fs.statSync(fullPath)
+          const stat = fs.statSync(path.join(dirPath, item.name))
           size = stat.size
           modified = stat.mtime.toISOString()
         } catch {}
-        return {
-          name: item.name,
-          type: item.isDirectory() ? 'directory' : 'file',
-          size,
-          modified
-        }
+        return { name: item.name, type: item.isDirectory() ? 'directory' : 'file', size, modified }
       })
     }
   } catch (e) {
@@ -209,79 +197,122 @@ function listFiles(dirPath) {
 }
 
 // ============================================================
-// LOCAL HTTP SERVER (receives commands from PhantomBridge)
+// LOCAL HTTP SERVER (pure Node.js, no express)
 // ============================================================
 
+const messages = []
+
+function parseBody(req) {
+  return new Promise((resolve) => {
+    let body = ''
+    req.on('data', c => body += c)
+    req.on('end', () => {
+      try { resolve(JSON.parse(body)) } catch { resolve({}) }
+    })
+  })
+}
+
+function parseQuery(url) {
+  const idx = url.indexOf('?')
+  if (idx < 0) return {}
+  const params = {}
+  url.substring(idx + 1).split('&').forEach(p => {
+    const [k, v] = p.split('=')
+    params[decodeURIComponent(k)] = decodeURIComponent(v || '')
+  })
+  return params
+}
+
+function json(res, data, status) {
+  res.writeHead(status || 200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' })
+  res.end(JSON.stringify(data))
+}
+
 function startLocalServer() {
-  const app = express()
-  app.use(express.json({ limit: '10mb' }))
+  const server = http.createServer(async (req, res) => {
+    // CORS preflight
+    if (req.method === 'OPTIONS') {
+      res.writeHead(200, {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, x-deploy-token, x-agent-token, x-bridge-token'
+      })
+      return res.end()
+    }
 
-  // Health check
-  app.get('/health', (req, res) => {
-    res.json({
-      ok: true,
-      agent: config.agentId,
-      name: config.agentName,
-      platform: os.platform(),
-      hostname: os.hostname(),
-      uptime: os.uptime(),
-      totalMem: Math.round(os.totalmem() / 1024 / 1024 / 1024 * 10) / 10 + ' GB',
-      freeMem: Math.round(os.freemem() / 1024 / 1024 / 1024 * 10) / 10 + ' GB',
-      cpus: os.cpus().length,
-      version: '1.0.0'
-    })
+    const urlPath = req.url.split('?')[0]
+    const query = parseQuery(req.url)
+
+    try {
+      // GET /health
+      if (req.method === 'GET' && urlPath === '/health') {
+        return json(res, {
+          ok: true,
+          agent: config.agentId,
+          name: config.agentName,
+          platform: os.platform(),
+          hostname: os.hostname(),
+          uptime: os.uptime(),
+          totalMem: Math.round(os.totalmem() / 1024 / 1024 / 1024 * 10) / 10 + ' GB',
+          freeMem: Math.round(os.freemem() / 1024 / 1024 / 1024 * 10) / 10 + ' GB',
+          cpus: os.cpus().length,
+          version: '1.0.0'
+        })
+      }
+
+      // POST /send-to-windows
+      if (req.method === 'POST' && urlPath === '/send-to-windows') {
+        const body = await parseBody(req)
+        if (!body.message) return json(res, { error: 'message required' }, 400)
+        log('INFO', 'Command from ' + (body.from || '?') + ': ' + body.message.substring(0, 80))
+        const result = await handleCommand(body.message, body.type)
+        return json(res, { ok: true, result })
+      }
+
+      // GET /api/files
+      if (req.method === 'GET' && urlPath === '/api/files') {
+        return json(res, listFiles(query.path || 'C:\\'))
+      }
+
+      // GET /api/system-info
+      if (req.method === 'GET' && urlPath === '/api/system-info') {
+        return json(res, {
+          ok: true,
+          hostname: os.hostname(),
+          platform: os.platform(),
+          arch: os.arch(),
+          release: os.release(),
+          uptime: os.uptime(),
+          totalMem: os.totalmem(),
+          freeMem: os.freemem(),
+          cpuCount: os.cpus().length,
+          cpuModel: os.cpus()[0] ? os.cpus()[0].model : 'unknown',
+          user: os.userInfo().username
+        })
+      }
+
+      // Messages endpoints
+      if (req.method === 'GET' && (urlPath === '/messages-mac' || urlPath === '/messages')) {
+        return json(res, { ok: true, messages })
+      }
+      if (req.method === 'POST' && urlPath === '/send-to-mac') {
+        const body = await parseBody(req)
+        if (body.message) {
+          messages.push({ content: body.message, timestamp: new Date().toISOString(), from: 'windows' })
+          if (messages.length > 100) messages.splice(0, messages.length - 100)
+        }
+        return json(res, { ok: true })
+      }
+
+      // 404
+      json(res, { error: 'Not found', path: urlPath }, 404)
+    } catch (e) {
+      log('ERROR', 'Server error: ' + e.message)
+      json(res, { error: e.message }, 500)
+    }
   })
 
-  // Receive messages/commands from PhantomBridge
-  app.post('/send-to-windows', async (req, res) => {
-    const { message, type, from } = req.body
-    if (!message) return res.status(400).json({ error: 'message required' })
-
-    log('INFO', 'Command from ' + (from || 'unknown') + ': ' + (message || '').substring(0, 80))
-    const result = await handleCommand(message, type)
-    res.json({ ok: true, result })
-  })
-
-  // File listing
-  app.get('/api/files', (req, res) => {
-    const p = req.query.path || 'C:\\'
-    res.json(listFiles(p))
-  })
-
-  // System info
-  app.get('/api/system-info', (req, res) => {
-    res.json({
-      ok: true,
-      hostname: os.hostname(),
-      platform: os.platform(),
-      arch: os.arch(),
-      release: os.release(),
-      uptime: os.uptime(),
-      totalMem: os.totalmem(),
-      freeMem: os.freemem(),
-      cpus: os.cpus(),
-      networkInterfaces: os.networkInterfaces(),
-      userInfo: os.userInfo(),
-      tempDir: os.tmpdir()
-    })
-  })
-
-  // Messages endpoint (for compatibility)
-  const messages = []
-  app.get('/messages-mac', (req, res) => {
-    res.json({ ok: true, messages })
-  })
-  app.get('/messages', (req, res) => {
-    res.json({ ok: true, messages })
-  })
-  app.post('/send-to-mac', (req, res) => {
-    const { message } = req.body
-    if (message) messages.push({ content: message, timestamp: new Date().toISOString(), from: 'windows' })
-    if (messages.length > 100) messages.splice(0, messages.length - 100)
-    res.json({ ok: true })
-  })
-
-  const server = app.listen(config.localPort, () => {
+  server.listen(config.localPort, () => {
     log('OK', 'Local server running on port ' + config.localPort)
   })
 
@@ -295,8 +326,21 @@ function startLocalServer() {
 let tunnelProcess = null
 let currentTunnelUrl = null
 
+function findCloudflared() {
+  // Check common locations
+  const locations = [
+    'cloudflared',
+    'cloudflared.exe',
+    path.join(CONFIG_DIR, 'cloudflared.exe'),
+    path.join(os.homedir(), 'cloudflared.exe'),
+    'C:\\cloudflared\\cloudflared.exe',
+    path.join(process.env.LOCALAPPDATA || '', 'cloudflared', 'cloudflared.exe')
+  ]
+  return locations[0] // spawn will use PATH
+}
+
 function startTunnel() {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     if (!config.tunnelEnabled) {
       log('WARN', 'Tunnel disabled in config')
       return resolve(null)
@@ -304,15 +348,17 @@ function startTunnel() {
 
     log('INFO', 'Starting Cloudflare tunnel on port ' + config.localPort + '...')
 
-    // Try to find cloudflared
-    const cloudflared = process.platform === 'win32' ? 'cloudflared.exe' : 'cloudflared'
+    const cloudflared = findCloudflared()
 
-    tunnelProcess = spawn(cloudflared, [
-      'tunnel', '--url', 'http://localhost:' + config.localPort,
-      '--no-autoupdate'
-    ], {
-      stdio: ['ignore', 'pipe', 'pipe']
-    })
+    try {
+      tunnelProcess = spawn(cloudflared, [
+        'tunnel', '--url', 'http://localhost:' + config.localPort,
+        '--no-autoupdate'
+      ], { stdio: ['ignore', 'pipe', 'pipe'] })
+    } catch (e) {
+      log('ERROR', 'Cannot start cloudflared: ' + e.message)
+      return resolve(null)
+    }
 
     let resolved = false
     const urlRegex = /https:\/\/[a-z0-9-]+\.trycloudflare\.com/
@@ -332,40 +378,26 @@ function startTunnel() {
     tunnelProcess.stderr.on('data', checkOutput)
 
     tunnelProcess.on('error', (err) => {
-      log('ERROR', 'Tunnel failed to start: ' + err.message)
-      log('INFO', 'Make sure cloudflared is installed: https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/')
+      log('ERROR', 'Tunnel error: ' + err.message)
       if (!resolved) { resolved = true; resolve(null) }
     })
 
     tunnelProcess.on('exit', (code) => {
-      log('WARN', 'Tunnel process exited with code ' + code)
+      log('WARN', 'Tunnel exited (code ' + code + '). Restarting in 10s...')
       currentTunnelUrl = null
-      // Auto-restart after 10s
       setTimeout(() => {
-        log('INFO', 'Restarting tunnel...')
-        startTunnel().then(url => {
-          if (url) registerWithBridge(url)
-        })
+        startTunnel().then(url => { if (url) registerWithBridge(url) })
       }, 10000)
     })
 
-    // Timeout: if no URL found in 30s
     setTimeout(() => {
-      if (!resolved) {
-        resolved = true
-        log('WARN', 'Tunnel URL not detected in 30s')
-        resolve(null)
-      }
+      if (!resolved) { resolved = true; log('WARN', 'Tunnel timeout (30s)'); resolve(null) }
     }, 30000)
   })
 }
 
 function stopTunnel() {
-  if (tunnelProcess) {
-    tunnelProcess.kill()
-    tunnelProcess = null
-    currentTunnelUrl = null
-  }
+  if (tunnelProcess) { tunnelProcess.kill(); tunnelProcess = null; currentTunnelUrl = null }
 }
 
 // ============================================================
@@ -373,10 +405,7 @@ function stopTunnel() {
 // ============================================================
 
 async function registerWithBridge(tunnelUrl) {
-  if (!tunnelUrl) {
-    log('WARN', 'No tunnel URL to register')
-    return false
-  }
+  if (!tunnelUrl) return false
 
   const body = {
     url: tunnelUrl,
@@ -395,28 +424,23 @@ async function registerWithBridge(tunnelUrl) {
     }
   }
 
-  const headers = {}
-  if (config.agentToken) {
-    headers['x-agent-token'] = config.agentToken
-  } else {
-    headers['x-bridge-token'] = config.bridgeToken
-  }
+  const headers = config.agentToken
+    ? { 'x-agent-token': config.agentToken }
+    : { 'x-bridge-token': config.bridgeToken }
 
   try {
     const res = await httpRequest(config.bridgeUrl + '/register', 'POST', body, headers)
     if (res.status === 200 && res.data.ok) {
-      log('OK', 'Registered with PhantomBridge as "' + config.agentId + '"')
-      // Save agentToken for future reconnections
+      log('OK', 'Registered as "' + config.agentId + '" on PhantomBridge')
       if (res.data.agentToken && !config.agentToken) {
         config.agentToken = res.data.agentToken
         saveConfig()
-        log('OK', 'Agent token saved to config')
+        log('OK', 'Agent token saved')
       }
       return true
-    } else {
-      log('ERROR', 'Registration failed: ' + JSON.stringify(res.data))
-      return false
     }
+    log('ERROR', 'Registration failed: ' + JSON.stringify(res.data))
+    return false
   } catch (e) {
     log('ERROR', 'Registration error: ' + e.message)
     return false
@@ -427,18 +451,11 @@ async function registerWithBridge(tunnelUrl) {
 // HEARTBEAT
 // ============================================================
 
-let heartbeatTimer = null
-
 function startHeartbeat() {
-  heartbeatTimer = setInterval(async () => {
+  setInterval(async () => {
     if (!currentTunnelUrl) return
-
     try {
-      const res = await httpRequest(config.bridgeUrl + '/health', 'GET', null, null, 5000)
-      if (res.status === 200) {
-        // Re-register to update lastSeen
-        await registerWithBridge(currentTunnelUrl)
-      }
+      await registerWithBridge(currentTunnelUrl)
     } catch (e) {
       log('WARN', 'Heartbeat failed: ' + e.message)
     }
@@ -452,7 +469,6 @@ function startHeartbeat() {
 function runSetup() {
   const readline = require('readline')
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
-
   const ask = (q) => new Promise(resolve => rl.question(q, resolve))
 
   return (async () => {
@@ -461,8 +477,7 @@ function runSetup() {
     config.bridgeUrl = (await ask('PhantomBridge URL [' + config.bridgeUrl + ']: ')).trim() || config.bridgeUrl
     config.bridgeToken = (await ask('Bridge Token [' + config.bridgeToken + ']: ')).trim() || config.bridgeToken
 
-    const hostname = os.hostname().toLowerCase().replace(/[^a-z0-9-]/g, '-')
-    const defaultId = hostname || 'agent-' + Math.random().toString(36).substring(2, 6)
+    const defaultId = os.hostname().toLowerCase().replace(/[^a-z0-9-]/g, '-') || 'agent-' + Date.now().toString(36)
     config.agentId = (await ask('Agent ID [' + defaultId + ']: ')).trim() || defaultId
     config.agentName = (await ask('Agent Name [' + os.hostname() + ']: ')).trim() || os.hostname()
 
@@ -473,9 +488,7 @@ function runSetup() {
     config.tunnelEnabled = !tunnel.trim() || tunnel.trim().toLowerCase() === 'y'
 
     saveConfig()
-    console.log('\n\x1b[32mConfig saved to ' + CONFIG_PATH + '\x1b[0m')
-    console.log('\x1b[32mAgent ID: ' + config.agentId + '\x1b[0m\n')
-
+    console.log('\n\x1b[32mConfig saved! Agent ID: ' + config.agentId + '\x1b[0m\n')
     rl.close()
   })()
 }
@@ -485,15 +498,18 @@ function runSetup() {
 // ============================================================
 
 async function main() {
-  console.log('\n\x1b[36m╔══════════════════════════════════╗\x1b[0m')
-  console.log('\x1b[36m║     PhantomOS Windows Agent      ║\x1b[0m')
-  console.log('\x1b[36m║           v1.0.0                 ║\x1b[0m')
-  console.log('\x1b[36m╚══════════════════════════════════╝\x1b[0m\n')
+  console.log('')
+  console.log('\x1b[36m  ____  _                 _                    \x1b[0m')
+  console.log('\x1b[36m |  _ \\| |__   __ _ _ __ | |_ ___  _ __ ___   \x1b[0m')
+  console.log('\x1b[36m | |_) | \'_ \\ / _` | \'_ \\| __/ _ \\| \'_ ` _ \\  \x1b[0m')
+  console.log('\x1b[36m |  __/| | | | (_| | | | | || (_) | | | | | | \x1b[0m')
+  console.log('\x1b[36m |_|   |_| |_|\\__,_|_| |_|\\__\\___/|_| |_| |_| \x1b[0m')
+  console.log('\x1b[36m                    Agent v1.0.0               \x1b[0m')
+  console.log('')
 
   loadConfig()
   parseArgs()
 
-  // Interactive setup if needed
   if (config._setup || !config.agentId) {
     await runSetup()
     loadConfig()
@@ -505,10 +521,12 @@ async function main() {
     saveConfig()
   }
 
-  log('INFO', 'Agent ID: ' + config.agentId)
-  log('INFO', 'Agent Name: ' + config.agentName)
-  log('INFO', 'Bridge: ' + config.bridgeUrl)
-  log('INFO', 'Local port: ' + config.localPort)
+  log('INFO', 'Agent ID:    ' + config.agentId)
+  log('INFO', 'Agent Name:  ' + config.agentName)
+  log('INFO', 'Bridge URL:  ' + config.bridgeUrl)
+  log('INFO', 'Local port:  ' + config.localPort)
+  log('INFO', 'Config path: ' + CONFIG_PATH)
+  log('INFO', 'Log path:    ' + LOG_PATH)
 
   // Step 1: Start local server
   startLocalServer()
@@ -518,35 +536,28 @@ async function main() {
 
   // Step 3: Register with PhantomBridge
   if (tunnelUrl) {
-    const registered = await registerWithBridge(tunnelUrl)
-    if (registered) {
-      log('OK', 'Agent is live and connected to PhantomBridge!')
-      log('OK', 'Dashboard: ' + config.bridgeUrl + '/dashboard')
+    const ok = await registerWithBridge(tunnelUrl)
+    if (ok) {
+      log('OK', '================================')
+      log('OK', '  Agent is LIVE and connected!')
+      log('OK', '  Dashboard: ' + config.bridgeUrl + '/dashboard')
+      log('OK', '================================')
     } else {
-      log('WARN', 'Registration failed. Will retry on heartbeat.')
+      log('WARN', 'Registration failed. Will retry via heartbeat.')
     }
   } else {
-    log('WARN', 'No tunnel URL. Agent is running locally only on port ' + config.localPort)
-    log('INFO', 'Install cloudflared to enable remote access')
+    log('WARN', 'No tunnel. Agent running locally on port ' + config.localPort)
+    log('INFO', 'Install cloudflared for remote access:')
+    log('INFO', 'https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/')
   }
 
-  // Step 4: Start heartbeat
+  // Step 4: Heartbeat
   startHeartbeat()
 
   // Graceful shutdown
-  process.on('SIGINT', () => {
-    log('INFO', 'Shutting down...')
-    stopTunnel()
-    process.exit(0)
-  })
-  process.on('SIGTERM', () => {
-    log('INFO', 'Shutting down...')
-    stopTunnel()
-    process.exit(0)
-  })
+  const shutdown = () => { log('INFO', 'Shutting down...'); stopTunnel(); process.exit(0) }
+  process.on('SIGINT', shutdown)
+  process.on('SIGTERM', shutdown)
 }
 
-main().catch(err => {
-  log('ERROR', 'Fatal: ' + err.message)
-  process.exit(1)
-})
+main().catch(err => { log('ERROR', 'Fatal: ' + err.message); process.exit(1) })
