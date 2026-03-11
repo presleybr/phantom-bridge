@@ -51,6 +51,9 @@ app.get('/crm', (req, res) => res.sendFile(path.join(__dirname, 'public', 'crm',
 app.get('/crm/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'crm', 'index.html')))
 app.get('/', (req, res) => res.redirect('/dashboard'))
 
+// Agent download - serve agent files for Windows clients
+app.use('/agent', express.static(path.join(__dirname, 'agent')))
+
 // Secret token to protect registration
 const REGISTER_TOKEN = process.env.REGISTER_TOKEN || 'phantom-secret-2025'
 

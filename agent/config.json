@@ -1,0 +1,10 @@
+{
+  "bridgeUrl": "https://phantom-bridge.onrender.com",
+  "bridgeToken": "phantom-secret-2025",
+  "agentId": "",
+  "agentName": "",
+  "agentToken": "",
+  "localPort": 4444,
+  "heartbeatInterval": 30000,
+  "tunnelEnabled": true
+}
