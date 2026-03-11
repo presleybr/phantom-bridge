@@ -130,6 +130,18 @@ function getDefaultTunnelUrl() {
   return def ? def.tunnelUrl : null
 }
 
+// ============================================================
+// SETUP CODES: provision agents from dashboard
+// ============================================================
+const setupCodes = new Map() // code -> { agentId, agentName, bridgeToken, createdAt, used }
+
+function generateSetupCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789' // no 0/O/1/I confusion
+  let code = 'PHX-'
+  for (let i = 0; i < 4; i++) code += chars[Math.floor(Math.random() * chars.length)]
+  return code
+}
+
 // In-memory CRM clients store (renamed from 'clients' to avoid confusion with agents)
 let crmClients = [
   { id: '1', name: 'Elas Espeto e Marmitaria', status: 'active', type: 'Delivery + Website',
@@ -1593,6 +1605,152 @@ app.get('/api/ai/session/:id', (req, res) => {
   const session = sessions[req.params.id]
   if (!session) return res.status(404).json({ error: 'Session not found' })
   res.json({ ok: true, session })
+})
+
+// ============================================================
+// SETUP CODES & INSTALL PAGE
+// ============================================================
+
+// Provision a new agent (admin creates setup code from dashboard)
+app.post('/api/agents/provision', (req, res) => {
+  const token = req.headers['x-bridge-token'] || req.body.token
+  if (token !== REGISTER_TOKEN) {
+    return res.status(401).json({ error: 'Admin token required' })
+  }
+
+  const { agentName } = req.body
+  const code = generateSetupCode()
+  const agentId = (agentName || 'agent').toLowerCase().replace(/[^a-z0-9-]/g, '-') + '-' + code.split('-')[1].toLowerCase()
+
+  setupCodes.set(code, {
+    agentId,
+    agentName: agentName || agentId,
+    bridgeToken: REGISTER_TOKEN,
+    createdAt: new Date().toISOString(),
+    used: false
+  })
+
+  console.log('[PhantomBridge] Setup code created: ' + code + ' for agent: ' + agentId)
+  res.json({
+    ok: true,
+    setupCode: code,
+    agentId,
+    installUrl: req.protocol + '://' + req.get('host') + '/install/' + code,
+    downloadUrl: req.protocol + '://' + req.get('host') + '/agent/dist/PhantomAgent.exe'
+  })
+})
+
+// List active setup codes (admin)
+app.get('/api/agents/setup-codes', (req, res) => {
+  const codes = Array.from(setupCodes.entries()).map(([code, data]) => ({
+    code, ...data
+  }))
+  res.json({ ok: true, codes })
+})
+
+// Agent calls this with setup code to get its config
+app.get('/api/agent-setup/:code', (req, res) => {
+  const entry = setupCodes.get(req.params.code.toUpperCase())
+  if (!entry) {
+    return res.status(404).json({ error: 'Invalid or expired setup code' })
+  }
+
+  entry.used = true
+  entry.usedAt = new Date().toISOString()
+
+  res.json({
+    ok: true,
+    config: {
+      bridgeUrl: req.protocol + '://' + req.get('host'),
+      bridgeToken: entry.bridgeToken,
+      agentId: entry.agentId,
+      agentName: entry.agentName,
+      localPort: 4444,
+      heartbeatInterval: 30000,
+      tunnelEnabled: true
+    }
+  })
+})
+
+// Install page - client opens this link in browser
+app.get('/install/:code', (req, res) => {
+  const code = req.params.code.toUpperCase()
+  const entry = setupCodes.get(code)
+  const valid = !!entry
+  const agentName = entry ? entry.agentName : ''
+  const host = req.protocol + '://' + req.get('host')
+
+  res.send(`<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PhantomOS Agent - Download</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #0a0a0f; color: #e0e0e0; font-family: 'Segoe UI', sans-serif; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+    .container { max-width: 520px; width: 90%; text-align: center; }
+    .logo { font-size: 2rem; font-weight: 700; color: #00d4ff; margin-bottom: .5rem; letter-spacing: 2px; }
+    .logo span { color: #7b68ee; }
+    .subtitle { color: #888; margin-bottom: 2rem; }
+    .card { background: #12121a; border: 1px solid #1e1e2e; border-radius: 16px; padding: 2rem; margin-bottom: 1.5rem; }
+    .code-display { font-size: 2.5rem; font-weight: 700; color: #00d4ff; letter-spacing: 6px; font-family: 'Consolas', monospace; margin: 1rem 0; }
+    .agent-name { color: #7b68ee; font-size: 1.1rem; margin-bottom: 1rem; }
+    .btn { display: inline-block; padding: 14px 40px; background: linear-gradient(135deg, #00d4ff, #7b68ee); color: #fff; border: none; border-radius: 12px; font-size: 1.1rem; font-weight: 600; cursor: pointer; text-decoration: none; transition: transform .2s, box-shadow .2s; }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,212,255,.3); }
+    .btn-secondary { background: #1e1e2e; color: #00d4ff; border: 1px solid #00d4ff; margin-top: 1rem; font-size: .9rem; padding: 10px 24px; }
+    .steps { text-align: left; margin: 1.5rem 0; }
+    .step { display: flex; gap: 12px; margin-bottom: 1rem; align-items: flex-start; }
+    .step-num { width: 28px; height: 28px; background: #7b68ee; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: .85rem; flex-shrink: 0; }
+    .step-text { color: #ccc; line-height: 1.5; font-size: .95rem; }
+    .step-text code { background: #1a1a2a; padding: 2px 8px; border-radius: 4px; color: #00d4ff; font-family: 'Consolas', monospace; }
+    .invalid { color: #ff4444; }
+    .footer { color: #555; font-size: .8rem; margin-top: 2rem; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo">Phantom<span>OS</span></div>
+    <p class="subtitle">Windows Agent Installer</p>
+    ${valid ? `
+    <div class="card">
+      <p style="color:#888; font-size:.9rem;">Seu codigo de setup:</p>
+      <div class="code-display">${code}</div>
+      <p class="agent-name">${agentName}</p>
+
+      <a href="${host}/agent/dist/PhantomAgent.exe" class="btn" download>
+        Download PhantomAgent.exe
+      </a>
+
+      <div class="steps" style="margin-top:2rem;">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-text">Clique em <strong>Download</strong> acima</div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-text">Execute o <code>PhantomAgent.exe</code> baixado</div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-text">Quando pedir o codigo, digite: <code>${code}</code></div>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-text">Pronto! Seu PC estara conectado automaticamente.</div>
+        </div>
+      </div>
+    </div>
+    ` : `
+    <div class="card">
+      <p class="invalid" style="font-size:1.2rem;">Codigo invalido ou expirado</p>
+      <p style="color:#888; margin-top:1rem;">Solicite um novo link de instalacao ao administrador.</p>
+    </div>
+    `}
+    <p class="footer">PhantomOS &copy; ${new Date().getFullYear()} &mdash; Powered by PhantomBridge</p>
+  </div>
+</body>
+</html>`)
 })
 
 // ============================================================

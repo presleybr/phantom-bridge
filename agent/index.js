@@ -64,6 +64,33 @@ function parseArgs() {
   }
 }
 
+// Auto-configure via setup code from PhantomBridge
+async function setupFromCode(code) {
+  log('INFO', 'Activating setup code: ' + code)
+  try {
+    const res = await httpRequest(config.bridgeUrl + '/api/agent-setup/' + code, 'GET')
+    if (res.status === 200 && res.data.ok) {
+      const c = res.data.config
+      config.bridgeUrl = c.bridgeUrl || config.bridgeUrl
+      config.bridgeToken = c.bridgeToken || config.bridgeToken
+      config.agentId = c.agentId || config.agentId
+      config.agentName = c.agentName || config.agentName
+      config.localPort = c.localPort || config.localPort
+      config.heartbeatInterval = c.heartbeatInterval || config.heartbeatInterval
+      config.tunnelEnabled = c.tunnelEnabled !== undefined ? c.tunnelEnabled : true
+      saveConfig()
+      log('OK', 'Setup code accepted! Agent ID: ' + config.agentId)
+      return true
+    } else {
+      log('ERROR', 'Invalid setup code: ' + (res.data.error || 'unknown error'))
+      return false
+    }
+  } catch (e) {
+    log('ERROR', 'Cannot reach PhantomBridge: ' + e.message)
+    return false
+  }
+}
+
 // ============================================================
 // LOGGING
 // ============================================================
@@ -473,23 +500,43 @@ function runSetup() {
 
   return (async () => {
     console.log('\n\x1b[36m=== PhantomOS Agent Setup ===\x1b[0m\n')
+    console.log('  \x1b[33m[1]\x1b[0m Tenho um codigo de setup (ex: PHX-A3B7)')
+    console.log('  \x1b[33m[2]\x1b[0m Configurar manualmente')
+    console.log('')
 
-    config.bridgeUrl = (await ask('PhantomBridge URL [' + config.bridgeUrl + ']: ')).trim() || config.bridgeUrl
-    config.bridgeToken = (await ask('Bridge Token [' + config.bridgeToken + ']: ')).trim() || config.bridgeToken
+    const choice = (await ask('Escolha [1]: ')).trim() || '1'
 
-    const defaultId = os.hostname().toLowerCase().replace(/[^a-z0-9-]/g, '-') || 'agent-' + Date.now().toString(36)
-    config.agentId = (await ask('Agent ID [' + defaultId + ']: ')).trim() || defaultId
-    config.agentName = (await ask('Agent Name [' + os.hostname() + ']: ')).trim() || os.hostname()
+    if (choice === '1') {
+      const code = (await ask('\nDigite o codigo de setup: ')).trim().toUpperCase()
+      if (!code) {
+        console.log('\x1b[31mCodigo invalido.\x1b[0m')
+        rl.close()
+        return
+      }
+      rl.close()
+      const ok = await setupFromCode(code)
+      if (!ok) {
+        console.log('\x1b[31mFalha na ativacao. Verifique o codigo e tente novamente.\x1b[0m')
+        process.exit(1)
+      }
+    } else {
+      config.bridgeUrl = (await ask('PhantomBridge URL [' + config.bridgeUrl + ']: ')).trim() || config.bridgeUrl
+      config.bridgeToken = (await ask('Bridge Token [' + config.bridgeToken + ']: ')).trim() || config.bridgeToken
 
-    const port = await ask('Local port [' + config.localPort + ']: ')
-    if (port.trim()) config.localPort = parseInt(port.trim()) || 4444
+      const defaultId = os.hostname().toLowerCase().replace(/[^a-z0-9-]/g, '-') || 'agent-' + Date.now().toString(36)
+      config.agentId = (await ask('Agent ID [' + defaultId + ']: ')).trim() || defaultId
+      config.agentName = (await ask('Agent Name [' + os.hostname() + ']: ')).trim() || os.hostname()
 
-    const tunnel = await ask('Enable Cloudflare tunnel? [Y/n]: ')
-    config.tunnelEnabled = !tunnel.trim() || tunnel.trim().toLowerCase() === 'y'
+      const port = await ask('Local port [' + config.localPort + ']: ')
+      if (port.trim()) config.localPort = parseInt(port.trim()) || 4444
 
-    saveConfig()
-    console.log('\n\x1b[32mConfig saved! Agent ID: ' + config.agentId + '\x1b[0m\n')
-    rl.close()
+      const tunnel = await ask('Enable Cloudflare tunnel? [Y/n]: ')
+      config.tunnelEnabled = !tunnel.trim() || tunnel.trim().toLowerCase() === 'y'
+
+      saveConfig()
+      console.log('\n\x1b[32mConfig saved! Agent ID: ' + config.agentId + '\x1b[0m\n')
+      rl.close()
+    }
   })()
 }
 
@@ -510,7 +557,16 @@ async function main() {
   loadConfig()
   parseArgs()
 
-  if (config._setup || !config.agentId) {
+  // Auto-setup via --code=XXX (no interactive prompts needed)
+  if (config.code) {
+    const ok = await setupFromCode(config.code)
+    if (!ok) {
+      log('ERROR', 'Setup code failed. Run with --setup for manual config.')
+      process.exit(1)
+    }
+    delete config.code
+    delete config._setup
+  } else if (config._setup || !config.agentId) {
     await runSetup()
     loadConfig()
   }
